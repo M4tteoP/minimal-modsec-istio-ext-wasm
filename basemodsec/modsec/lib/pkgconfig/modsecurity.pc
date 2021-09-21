@@ -1,0 +1,11 @@
+prefix=/usr/local/modsecurity
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: ModSecurity
+Description: ModSecurity API
+Version: 3.0.4
+Cflags: -I${prefix}/include
+Libs: -L${exec_prefix}/lib -lmodsecurity
+Libs.private:    -lrt      -L/usr//lib -lpcre -L/usr/local/pcre -lpcre  
