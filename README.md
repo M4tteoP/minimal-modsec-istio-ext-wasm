@@ -1,1 +1,1 @@
-00-Final
+Minial inclusion of ModSecurity inside a Istio WASM extension
