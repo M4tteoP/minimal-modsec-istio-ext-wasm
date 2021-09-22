@@ -123,7 +123,7 @@ char ip[] = "200.249.12.31";
 //###########################
 
 
-char customRule[] = "SecDebugLog /dev/std"
+char customHardcodedRule[] = "SecDebugLog /dev/std"
    "out\r\n"
    "SecDebugLogLevel 1\r"
    "\n"
@@ -225,16 +225,18 @@ int process_intervention(modsecurity::Transaction *transaction) {
 //################################################ 
 
 bool PluginRootContext::onConfigure(size_t size) {
-  // Parse configuration JSON string.
+  // Parse configuration JSON string from YAML file
   if (size > 0 && !configure(size)) {
     LOG_WARN("configuration has errors initialization will not continue.");
     return false;
   }
+  // modSecConfig struct populated with configuration requests.
+
   modsecurity::ModSecurity *modsec;
   modsecurity::RulesSet *rules;
-   std::string output{""};
+  std::string output{""};
   
-    /**
+  /**
    * ModSecurity initial setup
    *
    */
@@ -252,8 +254,18 @@ bool PluginRootContext::onConfigure(size_t size) {
     *
     */
     rules = new modsecurity::RulesSet();
-    
-    if (rules->load(customRule) < 0){
+
+    std::string customRules{""};
+    for (auto i = modSecConfig.custom_rules.begin(); i != modSecConfig.custom_rules.end(); ++i){
+      customRules+=*i;
+      customRules+="\n"; // todo vedere se serve \r\n o solo \n
+    }
+    // from string to char[] for load()
+
+    // TODO preparare versione dummy di regola fissa e se c'è il boolean una un più la si aggiunge
+
+
+    if (rules->load(customRules.c_str()) < 0){ // TODO se non funziona https://www.journaldev.com/37220/convert-string-to-char-array-c-plus-plus
         output += "Problems loading the rules...";
         output += "\n";
         output += rules->m_parserError.str();
@@ -272,8 +284,7 @@ bool PluginRootContext::onConfigure(size_t size) {
      * We are going to have a transaction
      *
      */
-    modsecurity::Transaction *modsecTransaction = \
-        new modsecurity::Transaction(modsec, rules, NULL);
+    modsecurity::Transaction *modsecTransaction = new modsecurity::Transaction(modsec, rules, NULL);
     process_intervention(modsecTransaction);
 
     /**
@@ -287,6 +298,7 @@ bool PluginRootContext::onConfigure(size_t size) {
     output += "\n";
     logWarn(output);
     output = "";
+    
     /**
      * Finally we've got the URI
      *
