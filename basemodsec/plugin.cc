@@ -317,7 +317,7 @@ bool PluginRootContext::onConfigure(size_t size) {
      *
      */
     modsecTransaction->addRequestHeader("Host",
-        "net.tutsplus.com");
+        "net.tutsplus.com<script>alert</script>");
     process_intervention(modsecTransaction);
 
     output += "Request Headers added";
