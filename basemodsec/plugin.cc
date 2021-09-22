@@ -143,6 +143,15 @@ char customHardcodedRule[] = "SecDebugLog /dev/std"
    ":1,t:lowercase,deny"
    "\"";
 
+std::string xssRule = "SecRule ARGS|REQUEST"
+   "_HEADERS \"@rx <scri"
+   "pt>\" \"id:101,msg:"
+   "\'XSS Attack\',sever"
+   "ity:ERROR,deny,statu"
+   "s:404\"";
+
+   
+
 //##############################
 //##     Reaction function    ##
 //##############################
@@ -261,11 +270,14 @@ bool PluginRootContext::onConfigure(size_t size) {
       customRules+="\n"; // todo vedere se serve \r\n o solo \n
     }
     // from string to char[] for load()
+    
+    // merging custom Rules with predefined ones
+    if(modSecConfig.detect_xss==true){
+      customRules+=xssRule;
+    }
+    
 
-    // TODO preparare versione dummy di regola fissa e se c'è il boolean una un più la si aggiunge
-
-
-    if (rules->load(customRules.c_str()) < 0){ // TODO se non funziona https://www.journaldev.com/37220/convert-string-to-char-array-c-plus-plus
+    if (rules->load(customRules.c_str()) < 0){
         output += "Problems loading the rules...";
         output += "\n";
         output += rules->m_parserError.str();

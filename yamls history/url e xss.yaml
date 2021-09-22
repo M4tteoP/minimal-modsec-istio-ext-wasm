@@ -73,7 +73,7 @@ spec:
                        "custom_rules":[
                        "SecDebugLogLevel 1",
                        "SecRule REQUEST_URI \"@streq /wp-config.php\" \"id:102,phase:1,t:lowercase,deny\"",
-                       "SecRule ARGS|REQUEST_HEADERS “@rx <script>” \"id:101,msg:\'XSS Attack\',severity:ERROR,deny,status:404\""
+                       "SecRule ARGS|REQUEST_HEADERS \"@rx <script>\" \"id:101,msg:\\'XSS Attack\\',severity:ERROR,deny,status:404\""
                        ]
                      }
                    ]
