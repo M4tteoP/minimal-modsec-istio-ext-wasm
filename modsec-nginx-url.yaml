@@ -68,8 +68,8 @@ spec:
                  {
                    "modsec_config": [
                      {
-                       "sqli": "yes",
-                       "xss": "no",
+                       "sqli": "no",
+                       "xss": "yes",
                        "custom_rules":[
                        "SecDebugLogLevel 1",
                        "SecRule REQUEST_URI \"@streq /wp-config.php\" \"id:102,phase:1,t:lowercase,deny\""
