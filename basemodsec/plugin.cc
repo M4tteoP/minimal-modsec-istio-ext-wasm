@@ -2,13 +2,7 @@
 #include <strings.h>
 #include <errno.h>
 #include "plugin.h"
-#include "absl/strings/str_cat.h"
-#include "absl/strings/str_split.h"
-#include "extensions/common/wasm/base64.h"
-#include "extensions/common/wasm/json_util.h"
-#include "modsec/include/modsecurity/rule_message.h"
-#include "modsec/include/modsecurity/modsecurity.h"
-#include "modsec/include/modsecurity/rules_set.h"
+
 
 using ::nlohmann::json;
 using ::Wasm::Common::JsonArrayIterate;
@@ -240,9 +234,6 @@ bool PluginRootContext::onConfigure(size_t size) {
     return false;
   }
   // modSecConfig struct populated with configuration requests.
-
-  modsecurity::ModSecurity *modsec;
-  modsecurity::RulesSet *rules;
   std::string output{""};
   
   /**
@@ -269,13 +260,11 @@ bool PluginRootContext::onConfigure(size_t size) {
       customRules+=*i;
       customRules+="\n"; // todo vedere se serve \r\n o solo \n
     }
-    // from string to char[] for load()
-    
+
     // merging custom Rules with predefined ones
     if(modSecConfig.detect_xss==true){
       customRules+=xssRule;
     }
-    
 
     if (rules->load(customRules.c_str()) < 0){
         output += "Problems loading the rules...";
@@ -306,8 +295,7 @@ bool PluginRootContext::onConfigure(size_t size) {
     modsecTransaction->processConnection(ip, 12345, "127.0.0.1", 80);
     process_intervention(modsecTransaction);
 
-    output += "Connetion setup done";
-    output += "\n";
+    output += "Connetion setup done\n";
     logWarn(output);
     output = "";
     
@@ -354,15 +342,6 @@ bool PluginRootContext::onConfigure(size_t size) {
      * cleanup.
      */
     delete modsecTransaction;
-    delete rules;
-    delete modsec;
-
-    output += "Cleanup done";
-    output += "\n";
-    logWarn(output);
-    output = "";
-
-
 
   return true;
 }
@@ -409,7 +388,7 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
   for (auto& pair : pairs) { // pair è puntatore
     headers_string += (std::string(pair.first) + std::string(" : ") + std::string(pair.second)+ std::string("\n"));
   }
-  headers_string += std::string("=== Ending Intercepting Headers ===\n");
+  headers_string += std::string("\n=== Ending Intercepting Headers ===\n");
   logWarn(headers_string);
 
   return FilterHeadersStatus::Continue;
