@@ -195,7 +195,7 @@ int process_intervention(modsecurity::Transaction *transaction) {
     intervention.status = 200;
     intervention.url = NULL;
     intervention.log = NULL;
-    intervention.disruptive = 1;
+    intervention.disruptive = 0;
     std::string output{""};
 
     if (msc_intervention(transaction, &intervention) == 0) {
@@ -227,7 +227,7 @@ int process_intervention(modsecurity::Transaction *transaction) {
 
     if (intervention.status != 200) {
         output += "Intervention, returning code: ";
-        output += intervention.status;
+        output += std::to_string(intervention.status);
         output += "\n";
         LOG_WARN(output);
         return intervention.status;
@@ -237,9 +237,9 @@ int process_intervention(modsecurity::Transaction *transaction) {
 }
 
 
-//################################################
-//################################################
-//################################################ 
+//######################################################
+//######################################################
+//######################################################
 
 bool PluginRootContext::onConfigure(size_t size) {
   // Parse configuration JSON string from YAML file
@@ -382,10 +382,15 @@ bool PluginRootContext::myProcessRequestHeaders() {
 
 
 FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
+  int ret=0;
+  std::string keyUri{":path"};
+  std::string errorUri{"/error"};
 
   // beginning of the transaction
   modsecurity::Transaction* modsecTransaction = new modsecurity::Transaction(rootContext()->modsec, rootContext()->rules, NULL);
   std::string output{""};
+
+  // TODO manage returns from initprocess
   rootContext()->initprocess(modsecTransaction);
 
   // intercepting and collecting all the headers
@@ -406,7 +411,12 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
   for (auto& pair : pairs) { // pair è puntatore
     modsecTransaction -> addRequestHeader(std::string(pair.first),std::string(pair.second));
   }
-  printInterventionRet("initprocess","addRequestHeader",process_intervention(modsecTransaction));
+  ret=process_intervention(modsecTransaction);
+  printInterventionRet("onRequestHeaders","addRequestHeader",ret);
+  if(ret!=0){
+    replaceRequestHeader(keyUri,errorUri);
+    return FilterHeadersStatus::ContinueAndEndStream;
+  }
 
   output += "Request Headers added\n";
   logWarn(output);
@@ -414,13 +424,17 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
 
   // process Headers
   modsecTransaction -> processRequestHeaders();
-  printInterventionRet("initprocess","processRequestHeaders",process_intervention(modsecTransaction));
+  ret=process_intervention(modsecTransaction);
+  printInterventionRet("onRequestHeaders","processRequestHeaders",ret);
+  if(ret!=0){
+    replaceRequestHeader(keyUri,errorUri);
+    return FilterHeadersStatus::ContinueAndEndStream;
+  }
  
-  output += "Request Headers processed\n";
+  output += "Request Headers processed with no detection\n";
   logWarn(output);
   output = "";
-
-
-  // TODO MANAGE RETURN TO ALLOW/DENY
+  
   return FilterHeadersStatus::Continue;
 }
+
