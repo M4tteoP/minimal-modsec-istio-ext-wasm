@@ -22,6 +22,18 @@ inline std::string BoolToString(bool b){
   return b ? "true" : "false";
 }
 
+inline void printInterventionRet(std::string mainfunc,std::string func,int intervention_ret){
+std::string outinter{""};
+outinter += "[";
+outinter += mainfunc;
+outinter += "] ";
+outinter += func;
+outinter += " intervention_ret = ";
+outinter += std::to_string(intervention_ret);
+logWarn(outinter);
+outinter="";
+}
+
 bool extractBoolFromJSON(const json& configuration, std::string key, bool* bool_ptr) {
   std::string temp_value;
   auto it = configuration.find(key);
@@ -78,7 +90,8 @@ bool extractJSON(const json& configuration, PluginRootContext::ModSecConfigStruc
   return true;
 }
 
-char request_uri[] = "/wp-config.php";
+// TODO remove char request_uri[] = "/wp-config.php";
+char request_uri[] = "/test.php";
 
 char request_body_first[] = "" \
     "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n\r" \
@@ -182,10 +195,11 @@ int process_intervention(modsecurity::Transaction *transaction) {
     intervention.status = 200;
     intervention.url = NULL;
     intervention.log = NULL;
-    intervention.disruptive = 0;
+    intervention.disruptive = 1;
     std::string output{""};
 
     if (msc_intervention(transaction, &intervention) == 0) {
+        LOG_WARN("[msc_intervention] returning here");
         return 0;
     }
 
@@ -207,7 +221,7 @@ int process_intervention(modsecurity::Transaction *transaction) {
         output += "\n";
         free(intervention.url);
         intervention.url = NULL;
-        logWarn(output);
+        LOG_WARN(output);
         return intervention.status;
     }
 
@@ -215,10 +229,10 @@ int process_intervention(modsecurity::Transaction *transaction) {
         output += "Intervention, returning code: ";
         output += intervention.status;
         output += "\n";
-        logWarn(output);
+        LOG_WARN(output);
         return intervention.status;
     }
-    logWarn(output);
+    LOG_WARN(output);
     return 0;
 }
 
@@ -280,70 +294,8 @@ bool PluginRootContext::onConfigure(size_t size) {
     output += "\n";
     logWarn(output);
     output = "";
-
-    /**
-     * We are going to have a transaction
-     *
-     */
-    modsecurity::Transaction *modsecTransaction = new modsecurity::Transaction(modsec, rules, NULL);
-    process_intervention(modsecTransaction);
-
-    /**
-     * Initial connection setup
-     *
-     */
-    modsecTransaction->processConnection(ip, 12345, "127.0.0.1", 80);
-    process_intervention(modsecTransaction);
-
-    output += "Connetion setup done\n";
-    logWarn(output);
-    output = "";
     
-    /**
-     * Finally we've got the URI
-     *
-     */
-    modsecTransaction->processURI(request_uri, "GET", "1.1");
-    process_intervention(modsecTransaction);
-    
-    output += "Url added";
-    output += "\n";
-    logWarn(output);
-    output = "";
-
-
-    /**
-     * Lets add our request headers.
-     *
-     */
-    modsecTransaction->addRequestHeader("Host",
-        "net.tutsplus.com<script>alert</script>");
-    process_intervention(modsecTransaction);
-
-    output += "Request Headers added";
-    output += "\n";
-    logWarn(output);
-    output = "";
-    /**
-     * No other reuqest header to add, let process it.
-     *
-     */
-    modsecTransaction->processRequestHeaders();
-    process_intervention(modsecTransaction);
-
-    output += "Request Headers processed";
-    output += "\n";
-    logWarn(output);
-    output = "";
-
-    // [...]
-
-    /**
-     * cleanup.
-     */
-    delete modsecTransaction;
-
-  return true;
+    return true;
 }
 
 bool PluginRootContext::configure(size_t configuration_size) {
@@ -379,17 +331,96 @@ bool PluginRootContext::configure(size_t configuration_size) {
   return true;
 }
 
+bool PluginRootContext::initprocess(modsecurity::Transaction * modsecTransaction) {
+  std::string output{""};
+
+  // starting transaction
+  
+  printInterventionRet("initprocess","starting",process_intervention(modsecTransaction));
+
+  // connection setup
+  // TODO REAL DATA
+  // getValue({"request", "url_path"}, &request_info->url_path);
+  modsecTransaction -> processConnection(ip, 12345, "127.0.0.1", 80);
+  printInterventionRet("initprocess","processConnection",process_intervention(modsecTransaction));
+
+
+
+  output += "[initprocess] Connetion setup done\n";
+  logWarn(output);
+  output = "";
+
+  // add URI
+  // TODO REAL URI
+  // request_operation
+  modsecTransaction -> processURI(request_uri, "GET", "1.1"); 
+  
+  // process URI
+  printInterventionRet("initprocess","processURI",process_intervention(modsecTransaction));
+
+  output += "[initprocess] Url added\n";
+  logWarn(output);
+  output = "";
+
+  return true;
+}
+
+bool PluginRootContext::myProcessRequestHeaders() {
+  // DEBUG PURPOSES
+  // printing all the headers
+
+  // std::string headers_string{"\n=== Starting Intercepting Headers ===\n"};
+  // for (auto& pair : pairs) { // pair è puntatore
+  //   headers_string += (std::string(pair.first) + std::string(" : ") + std::string(pair.second)+ std::string("\n"));
+  // }
+  // headers_string += std::string("\n=== Ending Intercepting Headers ===\n");
+  // logWarn(headers_string);
+
+  //delete modsecTransaction;
+  return true;
+}
+
+
 FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
-  // intercepting and printing all the headers
+
+  // beginning of the transaction
+  modsecurity::Transaction* modsecTransaction = new modsecurity::Transaction(rootContext()->modsec, rootContext()->rules, NULL);
+  std::string output{""};
+  rootContext()->initprocess(modsecTransaction);
+
+  // intercepting and collecting all the headers
   // std::vector<std::pair<std::string_view, StringView>>
-  auto pairs = getRequestHeaderPairs()->pairs();
-
-  std::string headers_string{"\n=== Starting Intercepting Headers ===\n"};
-  for (auto& pair : pairs) { // pair è puntatore
-    headers_string += (std::string(pair.first) + std::string(" : ") + std::string(pair.second)+ std::string("\n"));
+  LOG_WARN(std::string("onRequestHeaders ") + std::to_string(id()));
+  auto result = getRequestHeaderPairs();
+  auto pairs = result->pairs();
+  LOG_WARN(std::string("headers: ") + std::to_string(pairs.size()));
+  
+  // printing all the headers - DEBUG PURPOSES
+  for (auto& p : pairs) {
+    LOG_WARN(std::string(p.first) + std::string(" -> ") + std::string(p.second));
   }
-  headers_string += std::string("\n=== Ending Intercepting Headers ===\n");
-  logWarn(headers_string);
 
+
+  // adding Headers to the transaction
+  // modsecTransaction -> addRequestHeader("Host","net.tutsplus.com<script>alert('0')</script>");
+  for (auto& pair : pairs) { // pair è puntatore
+    modsecTransaction -> addRequestHeader(std::string(pair.first),std::string(pair.second));
+  }
+  printInterventionRet("initprocess","addRequestHeader",process_intervention(modsecTransaction));
+
+  output += "Request Headers added\n";
+  logWarn(output);
+  output = "";
+
+  // process Headers
+  modsecTransaction -> processRequestHeaders();
+  printInterventionRet("initprocess","processRequestHeaders",process_intervention(modsecTransaction));
+ 
+  output += "Request Headers processed\n";
+  logWarn(output);
+  output = "";
+
+
+  // TODO MANAGE RETURN TO ALLOW/DENY
   return FilterHeadersStatus::Continue;
 }

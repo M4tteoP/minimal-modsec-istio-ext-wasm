@@ -33,18 +33,22 @@ class PluginRootContext : public RootContext {
   }
   bool onConfigure(size_t) override;
 
+  bool initprocess(modsecurity::Transaction * modsecTransaction);
+  bool myProcessRequestHeaders();
+
   struct ModSecConfigStruct {
     bool detect_sqli;
     bool detect_xss;
     std::vector<std::string> custom_rules;
   };
 
+  modsecurity::ModSecurity *modsec;
+  modsecurity::RulesSet *rules;
+
  private:
   bool configure(size_t);
   //bool extractJSON( const json& configuration, PluginRootContext::ModSecConfigStruct* modSecConfig);
   PluginRootContext::ModSecConfigStruct modSecConfig;
-  modsecurity::ModSecurity *modsec;
-  modsecurity::RulesSet *rules;
 };
 
 class PluginContext : public Context {
