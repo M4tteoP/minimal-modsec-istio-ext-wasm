@@ -5,6 +5,8 @@ wasm_cc_binary(
     srcs = [
         "plugin.cc",
         "plugin.h",
+        "rules.cc",
+        "rules.h",
         "@io_istio_proxy//extensions/common/wasm:base64.h",
     ],
     deps = [
