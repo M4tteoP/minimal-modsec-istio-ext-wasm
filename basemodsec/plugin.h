@@ -16,8 +16,9 @@ static const std::string EMPTY_STRING;
 
 // My custom JSON words
 #define JSON_NAME "modsec_config"
-#define SQLI_KEY "sqli"
-#define XSS_KEY "xss"
+#define DEFAULT_KEY "enable_default"
+#define SQLI_KEY "enable_sqli"
+#define XSS_KEY "enable_xss"
 #define CUSTOM_KEY "custom_rules"
 #define YES "yes"
 #define NO "no"
@@ -37,6 +38,7 @@ class PluginRootContext : public RootContext {
   bool myProcessRequestHeaders();
 
   struct ModSecConfigStruct {
+    bool enable_default;
     bool detect_sqli;
     bool detect_xss;
     std::vector<std::string> custom_rules;

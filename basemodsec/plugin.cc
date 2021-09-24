@@ -11,8 +11,7 @@ using ::Wasm::Common::JsonObjectIterate;
 using ::Wasm::Common::JsonValueAs;
 
 // Boilderplate code to register the extension implementation.
-static RegisterContextFactory register_Example(CONTEXT_FACTORY(PluginContext),
-                                               ROOT_FACTORY(PluginRootContext));
+static RegisterContextFactory register_Example(CONTEXT_FACTORY(PluginContext), ROOT_FACTORY(PluginRootContext));
 
 //################################################
 //##              Support Functions             ##
@@ -22,7 +21,7 @@ inline std::string BoolToString(bool b){
   return b ? "true" : "false";
 }
 
-inline void printInterventionRet(std::string mainfunc,std::string func,int intervention_ret){
+inline void printInterventionRet(std::string mainfunc, std::string func, int intervention_ret){
 std::string outinter{""};
 outinter += "[";
 outinter += mainfunc;
@@ -59,16 +58,22 @@ bool extractBoolFromJSON(const json& configuration, std::string key, bool* bool_
 
 bool extractJSON(const json& configuration, PluginRootContext::ModSecConfigStruct *modSecConfig) {
 
+  // Check if DEFAULT CONFIG RULES must be enabled
+  if(!extractBoolFromJSON(configuration, DEFAULT_KEY, &modSecConfig->enable_default)){
+    LOG_WARN(absl::StrCat("failed to parse configuration for ", DEFAULT_KEY,". Set by default as true"));
+    modSecConfig->enable_default = true;
+  }
+
   // Check SQLI detection
   if(!extractBoolFromJSON(configuration, SQLI_KEY, &modSecConfig->detect_sqli)){
-    LOG_WARN(absl::StrCat("failed to parse configuration for ", SQLI_KEY));
-    return false;
+    LOG_WARN(absl::StrCat("failed to parse configuration for ", SQLI_KEY,". Set by default as false"));
+    modSecConfig->detect_sqli = false;
   }
   
   // Check XSS detection
   if(!extractBoolFromJSON(configuration, XSS_KEY, &modSecConfig->detect_xss)){
-    LOG_WARN(absl::StrCat("failed to parse configuration for ", XSS_KEY));
-    return false;
+    LOG_WARN(absl::StrCat("failed to parse configuration for ", XSS_KEY,". Set by default as false"));
+    modSecConfig->detect_xss = false;
   }
 
   // Check and populate CUSTOM RULES (iterate over them)
@@ -81,7 +86,7 @@ bool extractJSON(const json& configuration, PluginRootContext::ModSecConfigStruc
             modSecConfig->custom_rules.push_back(rule_string.first.value());
             return true;
           })) {
-    LOG_WARN(absl::StrCat("failed to parse configuration for ",CUSTOM_KEY));
+    LOG_WARN(absl::StrCat("failed to parse configuration for ",CUSTOM_KEY,". No custom rules will be applied"));
     return false;
   }
   if (modSecConfig->custom_rules.size() <= 0) {
@@ -124,36 +129,58 @@ char response_body_third[] = "" \
 char ip[] = "200.249.12.31";
 
 //by https://www.cescaper.com/
+// attenzione anche agli escape del JSON, usare https://jsonformatter.curiousconcept.com/# post cescaper
 
 //###########################
 //##     Hardcoded Rule    ##
 //###########################
 
-
-char customHardcodedRule[] = "SecDebugLog /dev/std"
-   "out\r\n"
-   "SecDebugLogLevel 1\r"
+// Default Config Rules
+// TODO merge modsecurity.conf + crs-setup.conf
+/*
+SecRuleEngine DetectionOnly
+SecRequestBodyAccess On
+SecRuleEngine On
+SecDebugLogLevel 9
+SecDefaultAction "phase:1,log,auditlog,deny,status:403"
+SecDefaultAction "phase:2,log,auditlog,deny,status:403"
+*/
+char defaultConfigRules[] = "SecRuleEngine Detect"
+   "ionOnly\r\n"
+   "SecRequestBodyAccess"
+   " On\r\n"
+   "SecRuleEngine On\r\n"
+   "SecDebugLogLevel 9\r"
    "\n"
-   "SecRule RESPONSE_BOD"
-   "Y \"/soap:Body\" \"i"
-   "d:1,phase:5,deny\"\r"
+   "SecDefaultAction \"p"
+   "hase:1,log,auditlog,"
+   "deny,status:403\"\r"
    "\n"
-   "SecRule ARGS|REQUEST"
-   "_HEADERS “@rx <scrip"
-   "t>” \"id:101,msg:\'X"
-   "SS Attack\',severity"
-   ":ERROR,deny,status:4"
-   "04\"\r\n"
-   "SecRule REQUEST_URI "
-   "\"@streq /wp-config."
-   "php\" \"id:102,phase"
-   ":1,t:lowercase,deny"
-   "\"";
+   "SecDefaultAction \"p"
+   "hase:2,log,auditlog,"
+   "deny,status:403\"";
 
-std::string xssRule = "SecRule ARGS|REQUEST"
+// Default xss Rules
+// TODO merge XSS CRS
+/*
+SecRule ARGS|REQUEST_HEADERS "@rx <script>" "id:101,msg:'XSS Attack',severity:ERROR,deny,status:404"
+*/
+std::string xssRules = "SecRule ARGS|REQUEST"
    "_HEADERS \"@rx <scri"
    "pt>\" \"id:101,msg:"
    "\'XSS Attack\',sever"
+   "ity:CRITICAL,deny,statu"
+   "s:404\"";
+
+// Default sqli Rules
+// TODO at least a dummy SQLI RULE
+/*
+....
+*/
+std::string sqliRules = "SecRule ARGS|REQUEST"
+   "_HEADERS \"@rx <sqli"
+   ">\" \"id:103,msg:"
+   "\'sqli\',sever"
    "ity:ERROR,deny,statu"
    "s:404\"";
 
@@ -269,38 +296,44 @@ bool PluginRootContext::onConfigure(size_t size) {
     */
     rules = new modsecurity::RulesSet();
 
-    std::string customRules{""};
-    for (auto i = modSecConfig.custom_rules.begin(); i != modSecConfig.custom_rules.end(); ++i){
-      customRules+=*i;
-      customRules+="\n"; // todo vedere se serve \r\n o solo \n
+    std::string rulesConcat{""};
+        
+    if(modSecConfig.enable_default==true){
+      rulesConcat+=defaultConfigRules;
+      rulesConcat+="\n";
+    }
+    if(modSecConfig.detect_xss==true){
+      rulesConcat+=xssRules;
+      rulesConcat+="\n";
+    }
+    if(modSecConfig.detect_sqli==true){
+      rulesConcat+=sqliRules;
+      rulesConcat+="\n";
     }
 
     // merging custom Rules with predefined ones
-    if(modSecConfig.detect_xss==true){
-      customRules+=xssRule;
+    if (modSecConfig.custom_rules.size() > 0) {  
+      for (auto i = modSecConfig.custom_rules.begin(); i != modSecConfig.custom_rules.end(); ++i){
+        rulesConcat+=*i;
+        rulesConcat+="\n";
+      }
     }
 
-    if (rules->load(customRules.c_str()) < 0){
-        output += "Problems loading the rules...";
-        output += "\n";
-        output += rules->m_parserError.str();
-        output += "\n";
+    if (rules->load(rulesConcat.c_str()) < 0){
+        
+        output += absl::StrCat("Problems loading the rules...\n", rules->m_parserError.str(), "\n");
         logWarn(output);
         return -1;
     }
     
-    output += "\n";
-    output += "Rules Loaded";
-    output += "\n";
+    output += "\nRules Loaded\n";
     logWarn(output);
-    output = "";
-    
+
     return true;
 }
 
 bool PluginRootContext::configure(size_t configuration_size) {
-  auto configuration_data = getBufferBytes(WasmBufferType::PluginConfiguration,
-                                           0, configuration_size);
+  auto configuration_data = getBufferBytes(WasmBufferType::PluginConfiguration, 0, configuration_size);
   // Parse configuration JSON string.
   auto result = ::Wasm::Common::JsonParse(configuration_data->view());
   if (!result.has_value()) {
@@ -309,24 +342,26 @@ bool PluginRootContext::configure(size_t configuration_size) {
   }
   // j is a JsonObject holds configuration data
   auto j = result.value();
-  if (!JsonArrayIterate(j, JSON_NAME,
-                        [&](const json& configuration) -> bool {
+  if (!JsonArrayIterate(j, JSON_NAME, [&](const json& configuration) -> bool {
                           return extractJSON(configuration, &modSecConfig);
                         })) {
-    LOG_WARN(absl::StrCat("cannot parse plugin configuration JSON string: ",
-                          configuration_data->view()));
+    // TODO: atm never reached. Enabled default values if errors on parsing json
+    LOG_WARN(absl::StrCat("cannot parse plugin configuration JSON string: ",configuration_data->view()));
     return false;
   }
 
   // Print the whole config file just for debug purposes
-  LOG_WARN(absl::StrCat("modSecConfig->detect_sqli: ", BoolToString(modSecConfig.detect_sqli))); 
+  LOG_WARN(absl::StrCat("modSecConfig->enable_default: ", BoolToString(modSecConfig.enable_default)));
+  LOG_WARN(absl::StrCat("modSecConfig->detect_sqli: ", BoolToString(modSecConfig.detect_sqli)));
   LOG_WARN(absl::StrCat("modSecConfig->detect_xss: ", BoolToString(modSecConfig.detect_xss)));
-  std::string output{""};
-  for (auto i = modSecConfig.custom_rules.begin(); i != modSecConfig.custom_rules.end(); ++i){
-      output+=*i;
-      output+="\n";
-    }
-  LOG_WARN(output);
+  std::string output{"\n"};
+  if (modSecConfig.custom_rules.size() > 0) {
+    for (auto i = modSecConfig.custom_rules.begin(); i != modSecConfig.custom_rules.end(); ++i){
+        output+=*i;
+        output+="\n";
+      }
+    LOG_WARN(output);
+  }
 
   return true;
 }
