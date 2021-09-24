@@ -298,7 +298,7 @@ bool PluginRootContext::configure(size_t configuration_size) {
   LOG_WARN(absl::StrCat("modSecConfig->enable_default: ", BoolToString(modSecConfig.enable_default)));
   LOG_WARN(absl::StrCat("modSecConfig->detect_sqli: ", BoolToString(modSecConfig.detect_sqli)));
   LOG_WARN(absl::StrCat("modSecConfig->detect_xss: ", BoolToString(modSecConfig.detect_xss)));
-  std::string output{"\n"};
+  std::string output{"modSecConfig->custom_rules:\n"};
   if (modSecConfig.custom_rules.size() > 0) {
     for (auto i = modSecConfig.custom_rules.begin(); i != modSecConfig.custom_rules.end(); ++i){
         output+=*i;
@@ -310,7 +310,7 @@ bool PluginRootContext::configure(size_t configuration_size) {
   return true;
 }
 
-bool PluginRootContext::initprocess(modsecurity::Transaction * modsecTransaction) {
+bool PluginRootContext::initprocess(modsecurity::Transaction * modsecTransaction){
   std::string output{""};
 
   // starting transaction
@@ -393,8 +393,7 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
   ret=process_intervention(modsecTransaction);
   printInterventionRet("onRequestHeaders","addRequestHeader",ret);
   if(ret!=0){
-    replaceRequestHeader(keyUri,errorUri);
-    return FilterHeadersStatus::ContinueAndEndStream;
+    alertAction(ret);
   }
 
   output += "Request Headers added\n";
@@ -406,8 +405,7 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
   ret=process_intervention(modsecTransaction);
   printInterventionRet("onRequestHeaders","processRequestHeaders",ret);
   if(ret!=0){
-    replaceRequestHeader(keyUri,errorUri);
-    return FilterHeadersStatus::ContinueAndEndStream;
+    alertAction(ret);
   }
  
   output += "Request Headers processed with no detection\n";
@@ -415,5 +413,21 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
   output = "";
   
   return FilterHeadersStatus::Continue;
+}
+
+
+/*
+// Ref sendLocalResponse: https://github.com/proxy-wasm/proxy-wasm-cpp-sdk/blob/master/proxy_wasm_api.h
+// signature: 
+    inline WasmResult sendLocalResponse(uint32_t response_code, std::string_view response_code_details,
+                                    std::string_view body,
+                                    const HeaderStringPairs &additional_response_headers,
+                                    GrpcStatus grpc_status = GrpcStatus::InvalidCode) {
+*/
+FilterHeadersStatus PluginContext::alertAction(int response){
+    sendLocalResponse(403, absl::StrCat("Request dropped response= ",std::to_string(response)), "", {});
+    return FilterHeadersStatus::StopIteration;
+    // replaceRequestHeader(keyUri,errorUri);
+    // return FilterHeadersStatus::ContinueAndEndStream;
 }
 

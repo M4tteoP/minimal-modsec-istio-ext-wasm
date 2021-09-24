@@ -58,6 +58,7 @@ class PluginContext : public Context {
   explicit PluginContext(uint32_t id, RootContext* root) : Context(id, root) {}
 
   FilterHeadersStatus onRequestHeaders(uint32_t, bool) override;
+  FilterHeadersStatus alertAction(int response);
 
  private:
   inline PluginRootContext* rootContext() {
