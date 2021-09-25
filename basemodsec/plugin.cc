@@ -115,7 +115,7 @@ bool extractJSON(const json& configuration, PluginRootContext::ModSecConfigStruc
   return true;
 }
 
-// TODO remove char request_uri[] = "/wp-config.php";
+// TODO remove useless stack chars
 char request_uri[] = "/test.php";
 
 char request_body_first[] = "" \
@@ -495,7 +495,19 @@ FilterDataStatus PluginContext::onRequestBody(unsigned long body_buffer_length, 
   auto body = getBufferBytes(WasmBufferType::HttpRequestBody, 0, body_buffer_length);
   std::string bodyString = std::string(body->view());
   logWarn(absl::StrCat("[onRequestBody] bodyString = \n", bodyString));
-  
+
+
+
+
+  // TODO remove, static version of request body
+    // modsecTransaction->appendRequestBody(
+    //     (const unsigned char*)request_body_first,
+    //     strlen((const char*)request_body_first));
+    // process_intervention(modsecTransaction);
+    // modsecTransaction->processRequestBody();
+    // process_intervention(modsecTransaction);A
+
+
   // adding Body to the transaction
   modsecTransaction->appendRequestBody((const unsigned char*)bodyString.c_str(),bodyString.length());
   process_intervention(modsecTransaction);
