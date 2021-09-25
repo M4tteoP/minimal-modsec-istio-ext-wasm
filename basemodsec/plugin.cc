@@ -10,6 +10,24 @@ using ::Wasm::Common::JsonGetField;
 using ::Wasm::Common::JsonObjectIterate;
 using ::Wasm::Common::JsonValueAs;
 
+// WASM_PROLOG
+#ifndef NULL_PLUGIN
+#include "proxy_wasm_intrinsics.h"
+
+#else  // NULL_PLUGIN
+
+#include "include/proxy-wasm/null_plugin.h"
+
+using proxy_wasm::WasmHeaderMapType;
+using proxy_wasm::null_plugin::getHeaderMapValue;
+using proxy_wasm::null_plugin::getProperty;
+using proxy_wasm::null_plugin::getValue;
+
+#endif  // NULL_PLUGIN
+
+// END WASM_PROLOG
+
+
 #include "rules.h"
 
 // Boilderplate code to register the extension implementation.
@@ -362,8 +380,8 @@ bool PluginRootContext::myProcessRequestHeaders() {
 
 FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
   int ret=0;
-  std::string keyUri{":path"};
-  std::string errorUri{"/error"};
+  //std::string keyUri{":path"};
+  //std::string errorUri{"/error"};
 
   // beginning of the transaction
   modsecurity::Transaction* modsecTransaction = new modsecurity::Transaction(rootContext()->modsec, rootContext()->rules, NULL);
@@ -393,7 +411,7 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
   ret=process_intervention(modsecTransaction);
   printInterventionRet("onRequestHeaders","addRequestHeader",ret);
   if(ret!=0){
-    alertAction(ret);
+    alertActionHeader(ret);
   }
 
   output += "Request Headers added\n";
@@ -405,15 +423,105 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
   ret=process_intervention(modsecTransaction);
   printInterventionRet("onRequestHeaders","processRequestHeaders",ret);
   if(ret!=0){
-    alertAction(ret);
+    alertActionHeader(ret);
   }
  
   output += "Request Headers processed with no detection\n";
   logWarn(output);
   output = "";
+
+
+  // Testing getValue
+/*
+getValue({"cluster_name"}, &request_info->upstream_cluster);
+getValue({"route_name"}, &request_info->route_name);
+getValue({"request", "headers", "x-b3-sampled"}, &trace_sampled)
+getValue({"request", "url_path"}, &request_info->url_path);
+getValue({"request", "path"}, &request_info->path);
+getValue({"request", "host"}, &request_info->url_host);
+getValue({"request", "scheme"}, &request_info->url_scheme);
+getValue({"source", "address"}, &request_info->source_address);
+getValue({"destination", "address"}, &request_info->destination_address);
+getValue({"source", "port"}, &request_info->source_port);
+getValue({"destination", "port"}, &request_info->source_port);
+getValue({"upstream", "address"}, &request_info->upstream_host);
+getValue({"upstream", "port"}, &destination_port);
+*/
+
+std::string pippo{""};
+getValue({"cluster_name"}, &pippo);
+logWarn(absl::StrCat(pippo,"\n"));
+getValue({"route_name"}, &pippo);
+logWarn(absl::StrCat(pippo,"\n"));
+getValue({"request", "headers", "x-b3-sampled"}, &pippo);
+logWarn(absl::StrCat(pippo,"\n"));
+getValue({"request", "url_path"}, &pippo);
+logWarn(absl::StrCat(pippo,"\n"));
+getValue({"request", "path"}, &pippo);
+logWarn(absl::StrCat(pippo,"\n"));
+getValue({"request", "host"}, &pippo);
+logWarn(absl::StrCat(pippo,"\n"));
+getValue({"request", "scheme"}, &pippo);
+logWarn(absl::StrCat(pippo,"\n"));
+getValue({"source", "address"}, &pippo);
+logWarn(absl::StrCat(pippo,"\n"));
+getValue({"destination", "address"}, &pippo);
+logWarn(absl::StrCat(pippo,"\n"));
+uint64_t aaa;
+getValue({"source", "port"},&aaa);
+logWarn(absl::StrCat(std::to_string(aaa),"\n"));
+getValue({"destination", "port"}, &aaa);
+logWarn(absl::StrCat(std::to_string(aaa),"\n"));
+getValue({"upstream", "address"}, &pippo);
+logWarn(absl::StrCat(pippo,"\n"));
+getValue({"upstream", "port"}, &aaa);
+logWarn(absl::StrCat(std::to_string(aaa),"\n"));
   
   return FilterHeadersStatus::Continue;
 }
+
+
+
+FilterDataStatus PluginContext::onRequestBody(unsigned long body_buffer_length, bool end_of_stream) {
+  int ret=0;
+
+  // beginning of the transaction
+  modsecurity::Transaction* modsecTransaction = new modsecurity::Transaction(rootContext()->modsec, rootContext()->rules, NULL);
+  std::string output{""};
+
+  // TODO manage returns from initprocess
+  rootContext()->initprocess(modsecTransaction);
+  
+  auto body = getBufferBytes(WasmBufferType::HttpRequestBody, 0, body_buffer_length);
+  std::string bodyString = std::string(body->view());
+  logWarn(absl::StrCat("[onRequestBody] bodyString = \n", bodyString));
+  
+  // adding Body to the transaction
+  modsecTransaction->appendRequestBody((const unsigned char*)bodyString.c_str(),bodyString.length());
+  process_intervention(modsecTransaction);
+  if(ret!=0){
+    alertActionBody(ret);
+  }
+
+  output += "Request Body added\n";
+  logWarn(output);
+  output = "";
+    
+  // Process body
+  modsecTransaction->processRequestBody();
+  process_intervention(modsecTransaction);
+  if(ret!=0){
+    alertActionBody(ret);
+  }
+
+  output += "Request Body processed with no detection\n";
+  logWarn(output);
+  output = "";
+  
+  return FilterDataStatus::Continue;
+}
+
+
 
 
 /*
@@ -424,10 +532,14 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
                                     const HeaderStringPairs &additional_response_headers,
                                     GrpcStatus grpc_status = GrpcStatus::InvalidCode) {
 */
-FilterHeadersStatus PluginContext::alertAction(int response){
+FilterHeadersStatus PluginContext::alertActionHeader(int response){
     sendLocalResponse(403, absl::StrCat("Request dropped response= ",std::to_string(response)), "", {});
     return FilterHeadersStatus::StopIteration;
     // replaceRequestHeader(keyUri,errorUri);
     // return FilterHeadersStatus::ContinueAndEndStream;
 }
 
+FilterDataStatus PluginContext::alertActionBody(int response){
+    sendLocalResponse(403, absl::StrCat("Request dropped response= ",std::to_string(response)), "", {});
+    return FilterDataStatus::StopIterationNoBuffer;
+}

@@ -8,10 +8,11 @@
 
 // Default Config Rules
 // TODO merge modsecurity.conf + crs-setup.conf
+// SecRuleEngine On 
 /*
 SecRuleEngine DetectionOnly
 SecRequestBodyAccess On
-SecRuleEngine On
+SecRuleEngine Off
 SecDebugLogLevel 9
 SecDefaultAction "phase:1,log,auditlog,deny,status:403"
 SecDefaultAction "phase:2,log,auditlog,deny,status:403"
