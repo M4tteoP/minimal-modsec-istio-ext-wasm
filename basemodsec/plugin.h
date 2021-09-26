@@ -35,7 +35,6 @@ class PluginRootContext : public RootContext {
   bool onConfigure(size_t) override;
 
   bool initprocess(modsecurity::Transaction * modsecTransaction);
-  bool myProcessRequestHeaders();
 
   struct ModSecConfigStruct {
     bool enable_default;

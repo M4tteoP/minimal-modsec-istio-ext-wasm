@@ -42,15 +42,7 @@ inline std::string BoolToString(bool b){
 }
 
 inline void printInterventionRet(std::string mainfunc, std::string func, int intervention_ret){
-std::string outinter{""};
-outinter += "[";
-outinter += mainfunc;
-outinter += "] ";
-outinter += func;
-outinter += " intervention_ret = ";
-outinter += std::to_string(intervention_ret);
-logWarn(outinter);
-outinter="";
+  logWarn(absl::StrCat("[", mainfunc, "] ", func, " intervention_ret = ", std::to_string(intervention_ret)));
 }
 
 bool extractBoolFromJSON(const json& configuration, std::string key, bool* bool_ptr) {
@@ -160,21 +152,11 @@ static void logCb(void *data, const void *ruleMessagev) {
 
     const modsecurity::RuleMessage *ruleMessage = reinterpret_cast<const modsecurity::RuleMessage *>(ruleMessagev);
     std::string output{""};
-    output += "Rule Id: ";
-    output += std::to_string(ruleMessage->m_ruleId);
-    output += " phase: ";
-    output += std::to_string(ruleMessage->m_phase);
-    output += "\n";
+    output += absl::StrCat("Rule Id: ", std::to_string(ruleMessage->m_ruleId), " phase: ", std::to_string(ruleMessage->m_phase), "\n");
     if (ruleMessage->m_isDisruptive) {
-        output += " * Disruptive action: ";
-        output += modsecurity::RuleMessage::log(ruleMessage);
-        output += "\n";
-        output += " ** %d is meant to be informed by the webserver.";
-        output += "\n";
+        output += absl::StrCat(" * Disruptive action: ", modsecurity::RuleMessage::log(ruleMessage), "\n ** %d is meant to be informed by the webserver.\n");
     } else {
-        output += " * Match, but no disruptive action: ";
-        output += modsecurity::RuleMessage::log(ruleMessage);
-        output += "\n";
+        output += absl::StrCat(" * Match, but no disruptive action: ", modsecurity::RuleMessage::log(ruleMessage), "\n");
     }
       logWarn(output);
 }
@@ -196,18 +178,12 @@ int process_intervention(modsecurity::Transaction *transaction) {
         intervention.log = strdup("(no log message was specified)");
     }
 
-    output += "Log: ";
-    output += intervention.log;
-    output += "\n";
+    output += absl::StrCat("Log: ", intervention.log, "\n";
     free(intervention.log);
     intervention.log = NULL;
 
     if (intervention.url != NULL) {
-        output += "Intervention, redirect to: ";
-        output += intervention.url;
-        output += " with status code: ";
-        output += intervention.status;
-        output += "\n";
+        output += absl::StrCat("Intervention, redirect to: ", intervention.url, " with status code: ", intervention.status, "\n");
         free(intervention.url);
         intervention.url = NULL;
         LOG_WARN(output);
@@ -215,16 +191,13 @@ int process_intervention(modsecurity::Transaction *transaction) {
     }
 
     if (intervention.status != 200) {
-        output += "Intervention, returning code: ";
-        output += std::to_string(intervention.status);
-        output += "\n";
+        output += absl::StrCat("Intervention, returning code: ", std::to_string(intervention.status), "\n");
         LOG_WARN(output);
         return intervention.status;
     }
     LOG_WARN(output);
     return 0;
 }
-
 
 //######################################################
 //######################################################
@@ -239,59 +212,50 @@ bool PluginRootContext::onConfigure(size_t size) {
   // modSecConfig struct populated with configuration requests.
   std::string output{""};
   
-  /**
-   * ModSecurity initial setup
-   *
-   */
-    modsec = new modsecurity::ModSecurity();
-    modsec->setConnectorInformation("ModSecurity-test v0.0.1-alpha (ModSecurity test)");
-    modsec->setServerLogCb(logCb, modsecurity::RuleMessageLogProperty | modsecurity::IncludeFullHighlightLogProperty);
+  // ModSecurity setup
+  modsec = new modsecurity::ModSecurity();
+  modsec->setConnectorInformation("ModSecurity-test v0.0.1-alpha (ModSecurity test)");
+  modsec->setServerLogCb(logCb, modsecurity::RuleMessageLogProperty | modsecurity::IncludeFullHighlightLogProperty);
 
-    output += "\n";
-    output += "ModSecurity initial setup done";
-    output += "\n";
-    logWarn(output);
+  output += "\nModSecurity initial setup done\n";
+  logWarn(output);
+  
+  // Concatenation of the provided rules and loading
+  rules = new modsecurity::RulesSet();
 
-    /**
-    * loading the rules....
-    *
-    */
-    rules = new modsecurity::RulesSet();
+  std::string rulesConcat{""};
 
-    std::string rulesConcat{""};
-        
-    if(modSecConfig.enable_default==true){
-      rulesConcat+=defaultConfigRules;
+  if(modSecConfig.enable_default==true){
+    rulesConcat+=defaultConfigRules;
+    rulesConcat+="\n";
+  }
+  if(modSecConfig.detect_xss==true){
+    rulesConcat+=xssRules;
+    rulesConcat+="\n";
+  }
+  if(modSecConfig.detect_sqli==true){
+    rulesConcat+=sqliRules;
+    rulesConcat+="\n";
+  }
+
+  // merging custom Rules with predefined ones
+  if (modSecConfig.custom_rules.size() > 0){  
+    for (auto i = modSecConfig.custom_rules.begin(); i != modSecConfig.custom_rules.end(); ++i){
+      rulesConcat+=*i;
       rulesConcat+="\n";
     }
-    if(modSecConfig.detect_xss==true){
-      rulesConcat+=xssRules;
-      rulesConcat+="\n";
-    }
-    if(modSecConfig.detect_sqli==true){
-      rulesConcat+=sqliRules;
-      rulesConcat+="\n";
-    }
+  }
 
-    // merging custom Rules with predefined ones
-    if (modSecConfig.custom_rules.size() > 0) {  
-      for (auto i = modSecConfig.custom_rules.begin(); i != modSecConfig.custom_rules.end(); ++i){
-        rulesConcat+=*i;
-        rulesConcat+="\n";
-      }
-    }
+  // Loading rules
+  if (rules->load(rulesConcat.c_str()) < 0){
+      output += absl::StrCat("Problems loading the rules...\n", rules->m_parserError.str(), "\n");
+      logWarn(output);
+      return -1;
+  }
+  output += "\nRules Loaded\n";
+  logWarn(output);
 
-    if (rules->load(rulesConcat.c_str()) < 0){
-        
-        output += absl::StrCat("Problems loading the rules...\n", rules->m_parserError.str(), "\n");
-        logWarn(output);
-        return -1;
-    }
-    
-    output += "\nRules Loaded\n";
-    logWarn(output);
-
-    return true;
+  return true;
 }
 
 bool PluginRootContext::configure(size_t configuration_size) {
@@ -332,7 +296,6 @@ bool PluginRootContext::initprocess(modsecurity::Transaction * modsecTransaction
   std::string output{""};
 
   // starting transaction
-  
   printInterventionRet("initprocess","starting",process_intervention(modsecTransaction));
 
   // connection setup
@@ -348,7 +311,7 @@ bool PluginRootContext::initprocess(modsecurity::Transaction * modsecTransaction
   output = "";
 
   // add URI
-  // TODO REAL URI
+  // TODO REAL URI. GET/POST prenderlo dall' header, sempre con getValue
   // request_operation
   modsecTransaction -> processURI(request_uri, "GET", "1.1"); 
   
@@ -361,22 +324,6 @@ bool PluginRootContext::initprocess(modsecurity::Transaction * modsecTransaction
 
   return true;
 }
-
-bool PluginRootContext::myProcessRequestHeaders() {
-  // DEBUG PURPOSES
-  // printing all the headers
-
-  // std::string headers_string{"\n=== Starting Intercepting Headers ===\n"};
-  // for (auto& pair : pairs) { // pair è puntatore
-  //   headers_string += (std::string(pair.first) + std::string(" : ") + std::string(pair.second)+ std::string("\n"));
-  // }
-  // headers_string += std::string("\n=== Ending Intercepting Headers ===\n");
-  // logWarn(headers_string);
-
-  //delete modsecTransaction;
-  return true;
-}
-
 
 FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
   int ret=0;
@@ -431,7 +378,7 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
   output = "";
 
 
-  // Testing getValue
+// Testing getValue
 /*
 getValue({"cluster_name"}, &request_info->upstream_cluster);
 getValue({"route_name"}, &request_info->route_name);
@@ -534,8 +481,6 @@ FilterDataStatus PluginContext::onRequestBody(unsigned long body_buffer_length, 
 }
 
 
-
-
 /*
 // Ref sendLocalResponse: https://github.com/proxy-wasm/proxy-wasm-cpp-sdk/blob/master/proxy_wasm_api.h
 // signature: 
@@ -545,13 +490,11 @@ FilterDataStatus PluginContext::onRequestBody(unsigned long body_buffer_length, 
                                     GrpcStatus grpc_status = GrpcStatus::InvalidCode) {
 */
 FilterHeadersStatus PluginContext::alertActionHeader(int response){
-    sendLocalResponse(403, absl::StrCat("Request dropped response= ",std::to_string(response)), "", {});
+    sendLocalResponse(403, absl::StrCat("Request dropped by alertActionHeader response= ",std::to_string(response)), "", {});
     return FilterHeadersStatus::StopIteration;
-    // replaceRequestHeader(keyUri,errorUri);
-    // return FilterHeadersStatus::ContinueAndEndStream;
 }
 
 FilterDataStatus PluginContext::alertActionBody(int response){
-    sendLocalResponse(403, absl::StrCat("Request dropped response= ",std::to_string(response)), "", {});
+    sendLocalResponse(403, absl::StrCat("Request dropped by alertActionBody response= ",std::to_string(response)), "", {});
     return FilterDataStatus::StopIterationNoBuffer;
 }
