@@ -377,52 +377,51 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
   logWarn(output);
   output = "";
 
+  // Testing getValue
+  /*
+  getValue({"cluster_name"}, &request_info->upstream_cluster);
+  getValue({"route_name"}, &request_info->route_name);
+  getValue({"request", "headers", "x-b3-sampled"}, &trace_sampled)
+  getValue({"request", "url_path"}, &request_info->url_path);
+  getValue({"request", "path"}, &request_info->path);
+  getValue({"request", "host"}, &request_info->url_host);
+  getValue({"request", "scheme"}, &request_info->url_scheme);
+  getValue({"source", "address"}, &request_info->source_address);
+  getValue({"destination", "address"}, &request_info->destination_address);
+  getValue({"source", "port"}, &request_info->source_port);
+  getValue({"destination", "port"}, &request_info->source_port);
+  getValue({"upstream", "address"}, &request_info->upstream_host);
+  getValue({"upstream", "port"}, &destination_port);
+  */
 
-// Testing getValue
-/*
-getValue({"cluster_name"}, &request_info->upstream_cluster);
-getValue({"route_name"}, &request_info->route_name);
-getValue({"request", "headers", "x-b3-sampled"}, &trace_sampled)
-getValue({"request", "url_path"}, &request_info->url_path);
-getValue({"request", "path"}, &request_info->path);
-getValue({"request", "host"}, &request_info->url_host);
-getValue({"request", "scheme"}, &request_info->url_scheme);
-getValue({"source", "address"}, &request_info->source_address);
-getValue({"destination", "address"}, &request_info->destination_address);
-getValue({"source", "port"}, &request_info->source_port);
-getValue({"destination", "port"}, &request_info->source_port);
-getValue({"upstream", "address"}, &request_info->upstream_host);
-getValue({"upstream", "port"}, &destination_port);
-*/
-
-std::string pippo{""};
-getValue({"cluster_name"}, &pippo);
-logWarn(absl::StrCat(pippo,"\n"));
-getValue({"route_name"}, &pippo);
-logWarn(absl::StrCat(pippo,"\n"));
-getValue({"request", "headers", "x-b3-sampled"}, &pippo);
-logWarn(absl::StrCat(pippo,"\n"));
-getValue({"request", "url_path"}, &pippo);
-logWarn(absl::StrCat(pippo,"\n"));
-getValue({"request", "path"}, &pippo);
-logWarn(absl::StrCat(pippo,"\n"));
-getValue({"request", "host"}, &pippo);
-logWarn(absl::StrCat(pippo,"\n"));
-getValue({"request", "scheme"}, &pippo);
-logWarn(absl::StrCat(pippo,"\n"));
-getValue({"source", "address"}, &pippo);
-logWarn(absl::StrCat(pippo,"\n"));
-getValue({"destination", "address"}, &pippo);
-logWarn(absl::StrCat(pippo,"\n"));
-uint64_t aaa;
-getValue({"source", "port"},&aaa);
-logWarn(absl::StrCat(std::to_string(aaa),"\n"));
-getValue({"destination", "port"}, &aaa);
-logWarn(absl::StrCat(std::to_string(aaa),"\n"));
-getValue({"upstream", "address"}, &pippo);
-logWarn(absl::StrCat(pippo,"\n"));
-getValue({"upstream", "port"}, &aaa);
-logWarn(absl::StrCat(std::to_string(aaa),"\n"));
+  std::string pippo{""};
+  getValue({"cluster_name"}, &pippo);
+  logWarn(absl::StrCat(pippo,"\n"));
+  getValue({"route_name"}, &pippo);
+  logWarn(absl::StrCat(pippo,"\n"));
+  getValue({"request", "headers", "x-b3-sampled"}, &pippo);
+  logWarn(absl::StrCat(pippo,"\n"));
+  getValue({"request", "url_path"}, &pippo);
+  logWarn(absl::StrCat(pippo,"\n"));
+  getValue({"request", "path"}, &pippo);
+  logWarn(absl::StrCat(pippo,"\n"));
+  getValue({"request", "host"}, &pippo);
+  logWarn(absl::StrCat(pippo,"\n"));
+  getValue({"request", "scheme"}, &pippo);
+  logWarn(absl::StrCat(pippo,"\n"));
+  getValue({"source", "address"}, &pippo);
+  logWarn(absl::StrCat(pippo,"\n"));
+  getValue({"destination", "address"}, &pippo);
+  logWarn(absl::StrCat(pippo,"\n"));
+  uint64_t aaa;
+  getValue({"source", "port"},&aaa);
+  logWarn(absl::StrCat(std::to_string(aaa),"\n"));
+  getValue({"destination", "port"}, &aaa);
+  logWarn(absl::StrCat(std::to_string(aaa),"\n"));
+  getValue({"upstream", "address"}, &pippo);
+  logWarn(absl::StrCat(pippo,"\n"));
+  getValue({"upstream", "port"}, &aaa);
+  logWarn(absl::StrCat(std::to_string(aaa),"\n"));
   
   return FilterHeadersStatus::Continue;
 }
@@ -434,17 +433,13 @@ FilterDataStatus PluginContext::onRequestBody(unsigned long body_buffer_length, 
 
   // beginning of the transaction
   modsecurity::Transaction* modsecTransaction = new modsecurity::Transaction(rootContext()->modsec, rootContext()->rules, NULL);
-  std::string output{""};
-
+  
   // TODO manage returns from initprocess
   rootContext()->initprocess(modsecTransaction);
   
   auto body = getBufferBytes(WasmBufferType::HttpRequestBody, 0, body_buffer_length);
   std::string bodyString = std::string(body->view());
   logWarn(absl::StrCat("[onRequestBody] bodyString = \n", bodyString));
-
-
-
 
   // TODO remove, static version of request body
     // modsecTransaction->appendRequestBody(
@@ -462,10 +457,8 @@ FilterDataStatus PluginContext::onRequestBody(unsigned long body_buffer_length, 
     alertActionBody(ret);
   }
 
-  output += "Request Body added\n";
-  logWarn(output);
-  output = "";
-    
+  logWarn("Request Body added\n");
+
   // Process body
   modsecTransaction->processRequestBody();
   process_intervention(modsecTransaction);
@@ -473,10 +466,8 @@ FilterDataStatus PluginContext::onRequestBody(unsigned long body_buffer_length, 
     alertActionBody(ret);
   }
 
-  output += "Request Body processed with no detection\n";
-  logWarn(output);
-  output = "";
-  
+  logWarn("Request Body processed with no detection\n");
+
   return FilterDataStatus::Continue;
 }
 
