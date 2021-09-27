@@ -12,21 +12,13 @@ using ::Wasm::Common::JsonValueAs;
 
 // WASM_PROLOG
 #ifndef NULL_PLUGIN
-#include "proxy_wasm_intrinsics.h"
-
+  #include "proxy_wasm_intrinsics.h"
 #else  // NULL_PLUGIN
-
-#include "include/proxy-wasm/null_plugin.h"
-
-using proxy_wasm::WasmHeaderMapType;
-using proxy_wasm::null_plugin::getHeaderMapValue;
-using proxy_wasm::null_plugin::getProperty;
-using proxy_wasm::null_plugin::getValue;
-
-#endif  // NULL_PLUGIN
-
-// END WASM_PROLOG
-
+  #include "include/proxy-wasm/null_plugin.h"
+  using proxy_wasm::WasmHeaderMapType;
+  using proxy_wasm::null_plugin::getProperty;
+  using proxy_wasm::null_plugin::getValue;
+#endif
 
 #include "rules.h"
 
@@ -37,8 +29,12 @@ static RegisterContextFactory register_Example(CONTEXT_FACTORY(PluginContext), R
 //##              Support Functions             ##
 //################################################ 
 
-inline std::string BoolToString(bool b){
+inline std::string boolToString(bool b){
   return b ? "true" : "false";
+}
+
+inline std::string removeFromDelimiter(std::string input, std::string delimiter){
+  return input.substr(0, input.find(delimiter));
 }
 
 inline void printInterventionRet(std::string mainfunc, std::string func, int intervention_ret){
@@ -166,7 +162,7 @@ int process_intervention(modsecurity::Transaction *transaction) {
     intervention.status = 200;
     intervention.url = NULL;
     intervention.log = NULL;
-    intervention.disruptive = 0;
+    intervention.disruptive = 1;  // TODO check param https://github.com/SpiderLabs/ModSecurity/blob/v3/master/src/transaction.cc#L1433
     std::string output{""};
 
     if (msc_intervention(transaction, &intervention) == 0) {
@@ -178,12 +174,13 @@ int process_intervention(modsecurity::Transaction *transaction) {
         intervention.log = strdup("(no log message was specified)");
     }
 
-    output += absl::StrCat("Log: ", intervention.log, "\n");
+    // TODO: working on removing useless "Log: (no log message was specified)" showed in the log.
+    output += absl::StrCat("Log: ", intervention.log, "intervention.status = ", std::to_string(intervention.status) , "\n");
     free(intervention.log);
     intervention.log = NULL;
 
     if (intervention.url != NULL) {
-        output += absl::StrCat("Intervention, redirect to: ", intervention.url, " with status code: ", intervention.status, "\n");
+        output += absl::StrCat("Intervention, redirect to: ", intervention.url, " with status code: ", std::to_string(intervention.status), "\n");
         free(intervention.url);
         intervention.url = NULL;
         LOG_WARN(output);
@@ -277,9 +274,9 @@ bool PluginRootContext::configure(size_t configuration_size) {
   }
 
   // Print the whole config file just for debug purposes  
-  LOG_WARN(absl::StrCat("modSecConfig->enable_default: ", BoolToString(modSecConfig.enable_default)));
-  LOG_WARN(absl::StrCat("modSecConfig->detect_sqli: ", BoolToString(modSecConfig.detect_sqli)));
-  LOG_WARN(absl::StrCat("modSecConfig->detect_xss: ", BoolToString(modSecConfig.detect_xss)));
+  LOG_WARN(absl::StrCat("modSecConfig->enable_default: ", boolToString(modSecConfig.enable_default)));
+  LOG_WARN(absl::StrCat("modSecConfig->detect_sqli: ", boolToString(modSecConfig.detect_sqli)));
+  LOG_WARN(absl::StrCat("modSecConfig->detect_xss: ", boolToString(modSecConfig.detect_xss)));
   std::string output{"modSecConfig->custom_rules:\n"};
   if (modSecConfig.custom_rules.size() > 0) {
     for (auto i = modSecConfig.custom_rules.begin(); i != modSecConfig.custom_rules.end(); ++i){
@@ -293,34 +290,59 @@ bool PluginRootContext::configure(size_t configuration_size) {
 }
 
 bool PluginRootContext::initprocess(modsecurity::Transaction * modsecTransaction){
-  std::string output{""};
+  std::string clientIP;
+  uint64_t clientPort;
+  std::string serverIP;
+  uint64_t serverPort;
+  std::string uri;
+  std::string method;
+  std::string version;
 
   // starting transaction
   printInterventionRet("initprocess","starting",process_intervention(modsecTransaction));
 
   // connection setup
-  // TODO REAL DATA
-  // getValue({"request", "url_path"}, &request_info->url_path);
-  modsecTransaction -> processConnection(ip, 12345, "127.0.0.1", 80);
+
+  // Retrieving basic information of the connection
+  // depending on WAF position deployment, information may be not so relevant (e.g. internal IP as source)
+  getValue({"source", "address"}, &clientIP);
+  clientIP = removeFromDelimiter(clientIP,":");
+  getValue({"source", "port"}, &clientPort);
+  getValue({"destination", "address"}, &serverIP);
+  serverIP = removeFromDelimiter(serverIP,":");
+  getValue({"destination", "port"}, &serverPort);
+
+  //Logs
+  logWarn(absl::StrCat("[getValue] clientIP: ", clientIP));
+  logWarn(absl::StrCat("[getValue] clientPort: ", std::to_string(clientPort)));
+  logWarn(absl::StrCat("[getValue] serverIP: ", serverIP));
+  logWarn(absl::StrCat("[getValue] serverPort: ", std::to_string(serverPort)));
+
+  // processing basic information
+  modsecTransaction -> processConnection(clientIP.c_str(), clientPort, serverIP.c_str(), serverPort);
   printInterventionRet("initprocess","processConnection",process_intervention(modsecTransaction));
 
+  logWarn("[initprocess] Connetion setup done\n");
 
+  // Retrieving further information of the connection
 
-  output += "[initprocess] Connetion setup done\n";
-  logWarn(output);
-  output = "";
+  getValue({"request", "headers", "x-envoy-original-path"}, &uri); // URI
+  //TODO check if ":" is needed
+  getValue({"request", "headers", ":method"}, &method); // Protocol 
+  // TODO, not yet implemented http version distinction https://github.com/istio/proxy/blob/master/extensions/common/context.cc#L508 
+  version = "1.1";   
+ 
+  //Logs
+  logWarn(absl::StrCat("[getValue] path: ", uri));
+  logWarn(absl::StrCat("[getValue] method: ", method));
+  logWarn(absl::StrCat("[getValue] version: ", version));
 
-  // add URI
-  // TODO REAL URI. GET/POST prenderlo dall' header, sempre con getValue
-  // request_operation
-  modsecTransaction -> processURI(request_uri, "GET", "1.1"); 
+  modsecTransaction -> processURI(uri.c_str(), method.c_str(), version.c_str());
   
   // process URI
   printInterventionRet("initprocess","processURI",process_intervention(modsecTransaction));
 
-  output += "[initprocess] Url added\n";
-  logWarn(output);
-  output = "";
+  logWarn("[initprocess] Url added\n");
 
   return true;
 }
@@ -349,7 +371,6 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
     LOG_WARN(std::string(p.first) + std::string(" -> ") + std::string(p.second));
   }
 
-
   // adding Headers to the transaction
   // modsecTransaction -> addRequestHeader("Host","net.tutsplus.com<script>alert('0')</script>");
   for (auto& pair : pairs) { // pair è puntatore
@@ -366,7 +387,11 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
   output = "";
 
   // process Headers
-  modsecTransaction -> processRequestHeaders();
+  if(modsecTransaction -> processRequestHeaders()){
+    LOG_WARN("processRequestHeaders() correctly executed");
+  }else{
+    LOG_WARN("[!]Errors on performing processRequestHeaders()");
+  }
   ret=process_intervention(modsecTransaction);
   printInterventionRet("onRequestHeaders","processRequestHeaders",ret);
   if(ret!=0){
@@ -377,52 +402,6 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
   logWarn(output);
   output = "";
 
-  // Testing getValue
-  /*
-  getValue({"cluster_name"}, &request_info->upstream_cluster);
-  getValue({"route_name"}, &request_info->route_name);
-  getValue({"request", "headers", "x-b3-sampled"}, &trace_sampled)
-  getValue({"request", "url_path"}, &request_info->url_path);
-  getValue({"request", "path"}, &request_info->path);
-  getValue({"request", "host"}, &request_info->url_host);
-  getValue({"request", "scheme"}, &request_info->url_scheme);
-  getValue({"source", "address"}, &request_info->source_address);
-  getValue({"destination", "address"}, &request_info->destination_address);
-  getValue({"source", "port"}, &request_info->source_port);
-  getValue({"destination", "port"}, &request_info->source_port);
-  getValue({"upstream", "address"}, &request_info->upstream_host);
-  getValue({"upstream", "port"}, &destination_port);
-  */
-
-  std::string pippo{""};
-  getValue({"cluster_name"}, &pippo);
-  logWarn(absl::StrCat(pippo,"\n"));
-  getValue({"route_name"}, &pippo);
-  logWarn(absl::StrCat(pippo,"\n"));
-  getValue({"request", "headers", "x-b3-sampled"}, &pippo);
-  logWarn(absl::StrCat(pippo,"\n"));
-  getValue({"request", "url_path"}, &pippo);
-  logWarn(absl::StrCat(pippo,"\n"));
-  getValue({"request", "path"}, &pippo);
-  logWarn(absl::StrCat(pippo,"\n"));
-  getValue({"request", "host"}, &pippo);
-  logWarn(absl::StrCat(pippo,"\n"));
-  getValue({"request", "scheme"}, &pippo);
-  logWarn(absl::StrCat(pippo,"\n"));
-  getValue({"source", "address"}, &pippo);
-  logWarn(absl::StrCat(pippo,"\n"));
-  getValue({"destination", "address"}, &pippo);
-  logWarn(absl::StrCat(pippo,"\n"));
-  uint64_t aaa;
-  getValue({"source", "port"},&aaa);
-  logWarn(absl::StrCat(std::to_string(aaa),"\n"));
-  getValue({"destination", "port"}, &aaa);
-  logWarn(absl::StrCat(std::to_string(aaa),"\n"));
-  getValue({"upstream", "address"}, &pippo);
-  logWarn(absl::StrCat(pippo,"\n"));
-  getValue({"upstream", "port"}, &aaa);
-  logWarn(absl::StrCat(std::to_string(aaa),"\n"));
-  
   return FilterHeadersStatus::Continue;
 }
 
@@ -452,7 +431,7 @@ FilterDataStatus PluginContext::onRequestBody(unsigned long body_buffer_length, 
 
   // adding Body to the transaction
   modsecTransaction->appendRequestBody((const unsigned char*)bodyString.c_str(),bodyString.length());
-  process_intervention(modsecTransaction);
+  ret=process_intervention(modsecTransaction);
   if(ret!=0){
     alertActionBody(ret);
   }
@@ -460,8 +439,13 @@ FilterDataStatus PluginContext::onRequestBody(unsigned long body_buffer_length, 
   logWarn("Request Body added\n");
 
   // Process body
-  modsecTransaction->processRequestBody();
-  process_intervention(modsecTransaction);
+  if(modsecTransaction->processRequestBody()){
+    LOG_WARN("processRequestBody() correctly executed");
+  }else{
+    LOG_WARN("[!]Errors on performing processRequestBody()");
+  }
+  
+  ret=process_intervention(modsecTransaction);
   if(ret!=0){
     alertActionBody(ret);
   }
