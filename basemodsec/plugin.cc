@@ -178,7 +178,7 @@ int process_intervention(modsecurity::Transaction *transaction) {
         intervention.log = strdup("(no log message was specified)");
     }
 
-    output += absl::StrCat("Log: ", intervention.log, "\n";
+    output += absl::StrCat("Log: ", intervention.log, "\n");
     free(intervention.log);
     intervention.log = NULL;
 
@@ -276,7 +276,7 @@ bool PluginRootContext::configure(size_t configuration_size) {
     return false;
   }
 
-  // Print the whole config file just for debug purposes
+  // Print the whole config file just for debug purposes  
   LOG_WARN(absl::StrCat("modSecConfig->enable_default: ", BoolToString(modSecConfig.enable_default)));
   LOG_WARN(absl::StrCat("modSecConfig->detect_sqli: ", BoolToString(modSecConfig.detect_sqli)));
   LOG_WARN(absl::StrCat("modSecConfig->detect_xss: ", BoolToString(modSecConfig.detect_xss)));
