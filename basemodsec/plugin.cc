@@ -245,6 +245,9 @@ bool PluginRootContext::onConfigure(size_t size) {
     }
   }
 
+  //Debug printing all the rules
+  logWarn(absl::StrCat("rulesConcat:\n",rulesConcat));
+
   // Loading rules
   if (rules->load(rulesConcat.c_str()) < 0){
       output += absl::StrCat("Problems loading the rules...\n", rules->m_parserError.str(), "\n");
@@ -380,7 +383,7 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
   ret=process_intervention(modsecTransaction);
   printInterventionRet("onRequestHeaders","addRequestHeader",ret);
   if(ret!=0){
-    alertActionHeader(ret);
+    return alertActionHeader(ret);
   }
 
   output += "Request Headers added\n";
@@ -396,7 +399,7 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
   ret=process_intervention(modsecTransaction);
   printInterventionRet("onRequestHeaders","processRequestHeaders",ret);
   if(ret!=0){
-    alertActionHeader(ret);
+    return alertActionHeader(ret);
   }
  
   output += "Request Headers processed with no detection\n";
@@ -421,23 +424,14 @@ FilterDataStatus PluginContext::onRequestBody(unsigned long body_buffer_length, 
   std::string bodyString = std::string(body->view());
   logWarn(absl::StrCat("[onRequestBody] bodyString = \n", bodyString));
 
-  // TODO remove, static version of request body
-    // modsecTransaction->appendRequestBody(
-    //     (const unsigned char*)request_body_first,
-    //     strlen((const char*)request_body_first));
-    // process_intervention(modsecTransaction);
-    // modsecTransaction->processRequestBody();
-    // process_intervention(modsecTransaction);A
-
-
   // adding Body to the transaction
   modsecTransaction->appendRequestBody((const unsigned char*)bodyString.c_str(),bodyString.length());
   ret=process_intervention(modsecTransaction);
   if(ret!=0){
-    alertActionBody(ret);
+    return alertActionBody(ret);
   }
 
-  logWarn("Request Body added\n");
+  logWarn("Request Body added");
 
   // Process body
   if(modsecTransaction->processRequestBody()){
@@ -448,7 +442,7 @@ FilterDataStatus PluginContext::onRequestBody(unsigned long body_buffer_length, 
   
   ret=process_intervention(modsecTransaction);
   if(ret!=0){
-    alertActionBody(ret);
+    return alertActionBody(ret);
   }
 
   logWarn("Request Body processed with no detection\n");

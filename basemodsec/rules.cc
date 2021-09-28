@@ -12,7 +12,7 @@
 /*
 SecRuleEngine DetectionOnly
 SecRequestBodyAccess On
-SecRuleEngine On <-- removed, it already is DetectionOnly, isn't it?   
+SecRuleEngine On
 SecDebugLogLevel 9
 SecDefaultAction "phase:1,log,auditlog,deny,status:403"
 SecDefaultAction "phase:2,log,auditlog,deny,status:403"
@@ -21,6 +21,7 @@ std::string defaultConfigRules = "SecRuleEngine Detect"
    "ionOnly\r\n"
    "SecRequestBodyAccess"
    " On\r\n"
+   "SecRuleEngine On\r\n"
    "SecDebugLogLevel 9\r"
    "\n"
    "SecDefaultAction \"p"
