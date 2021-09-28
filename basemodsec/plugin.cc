@@ -324,12 +324,11 @@ bool PluginRootContext::initprocess(modsecurity::Transaction * modsecTransaction
   modsecTransaction -> processConnection(clientIP.c_str(), clientPort, serverIP.c_str(), serverPort);
   printInterventionRet("initprocess","processConnection",process_intervention(modsecTransaction));
 
-  logWarn("[initprocess] Connetion setup done\n");
+  logWarn("[initprocess] Connection setup done\n");
 
   // Retrieving further information of the connection
 
-  getValue({"request", "headers", "x-envoy-original-path"}, &uri); // URI
-  //TODO check if ":" is needed
+  getValue({"request", "headers", ":path"}, &uri); // URI x-envoy-original-path se path modificato con rewrite
   getValue({"request", "headers", ":method"}, &method); // Protocol 
   // TODO, not yet implemented http version distinction https://github.com/istio/proxy/blob/master/extensions/common/context.cc#L508 
   version = "1.1";   
@@ -339,7 +338,7 @@ bool PluginRootContext::initprocess(modsecurity::Transaction * modsecTransaction
   logWarn(absl::StrCat("[getValue] method: ", method));
   logWarn(absl::StrCat("[getValue] version: ", version));
 
-  modsecTransaction -> processURI(uri.c_str(), method.c_str(), version.c_str());
+  modsecTransaction->processURI(uri.c_str(), method.c_str(), version.c_str());
   
   // process URI
   printInterventionRet("initprocess","processURI",process_intervention(modsecTransaction));

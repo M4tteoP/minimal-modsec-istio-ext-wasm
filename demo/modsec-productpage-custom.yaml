@@ -72,7 +72,7 @@ spec:
                        "enable_sqli": "no",
                        "enable_xss": "no",
                        "custom_rules":[
-                       "SecRule ARGS \"@rx sqli\" \"id:103,phase:1,t:lowercase,deny\""
+                       "SecRule ARGS|ARGS_NAMES|REQUEST_BODY\"@rx sqli\" \"id:103,phase:2,t:lowercase,deny\""
                        ]
                      }
                    ]
