@@ -45,6 +45,8 @@ class PluginRootContext : public RootContext {
 
   modsecurity::ModSecurity *modsec;
   modsecurity::RulesSet *rules;
+  modsecurity::Transaction* modsecTransaction;
+  int counter =0;
 
  private:
   bool configure(size_t);

@@ -348,6 +348,9 @@ bool PluginRootContext::initprocess(modsecurity::Transaction * modsecTransaction
 
   logWarn("[initprocess] Url added\n");
 
+  // TODO remove or rewrite debug purposes
+  counter++;
+  LOG_WARN(absl::StrCat("[COUNTER] H", std::to_string(counter)," ", method));
   return true;
 }
 
@@ -357,11 +360,17 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
   //std::string errorUri{"/error"};
 
   // beginning of the transaction
-  modsecurity::Transaction* modsecTransaction = new modsecurity::Transaction(rootContext()->modsec, rootContext()->rules, NULL);
+  free(rootContext()->modsecTransaction);
+  rootContext()->modsecTransaction = new modsecurity::Transaction(rootContext()->modsec, rootContext()->rules, NULL);
   std::string output{""};
 
   // TODO manage returns from initprocess
-  rootContext()->initprocess(modsecTransaction);
+  rootContext()->initprocess(rootContext()->modsecTransaction);
+
+  // TODO remove or rewrite debug purposes  
+  std::string requestId;
+  getValue({"request", "headers", "x-request-id"}, &requestId);
+  LOG_WARN(absl::StrCat("[getValue] REQUEST ID from HEADER: ", requestId));
 
   // intercepting and collecting all the headers
   // std::vector<std::pair<std::string_view, StringView>>
@@ -378,9 +387,9 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
   // adding Headers to the transaction
   // modsecTransaction -> addRequestHeader("Host","net.tutsplus.com<script>alert('0')</script>");
   for (auto& pair : pairs) { // pair è puntatore
-    modsecTransaction -> addRequestHeader(std::string(pair.first),std::string(pair.second));
+    rootContext()->modsecTransaction -> addRequestHeader(std::string(pair.first),std::string(pair.second));
   }
-  ret=process_intervention(modsecTransaction);
+  ret=process_intervention(rootContext()->modsecTransaction);
   printInterventionRet("onRequestHeaders","addRequestHeader",ret);
   if(ret!=0){
     return alertActionHeader(ret);
@@ -391,12 +400,12 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
   output = "";
 
   // process Headers
-  if(modsecTransaction -> processRequestHeaders()){
+  if(rootContext()->modsecTransaction -> processRequestHeaders()){
     LOG_WARN("processRequestHeaders() correctly executed");
   }else{
     LOG_WARN("[!]Errors on performing processRequestHeaders()");
   }
-  ret=process_intervention(modsecTransaction);
+  ret=process_intervention(rootContext()->modsecTransaction);
   printInterventionRet("onRequestHeaders","processRequestHeaders",ret);
   if(ret!=0){
     return alertActionHeader(ret);
@@ -415,18 +424,24 @@ FilterDataStatus PluginContext::onRequestBody(unsigned long body_buffer_length, 
   int ret=0;
 
   // beginning of the transaction
-  modsecurity::Transaction* modsecTransaction = new modsecurity::Transaction(rootContext()->modsec, rootContext()->rules, NULL);
+  //modsecurity::Transaction* modsecTransaction = new modsecurity::Transaction(rootContext()->modsec, rootContext()->rules, NULL);
   
   // TODO manage returns from initprocess
-  rootContext()->initprocess(modsecTransaction);
+  //rootContext()->initprocess(modsecTransaction);
+
+  // TODO remove or rewrite debug purposes
+  LOG_WARN(absl::StrCat("[COUNTER] B", std::to_string(rootContext()->counter)));
+  std::string requestId;
+  getValue({"request", "headers", "x-request-id"}, &requestId);
+  LOG_WARN(absl::StrCat("[getValue] REQUEST ID from BODY: ", requestId));
   
   auto body = getBufferBytes(WasmBufferType::HttpRequestBody, 0, body_buffer_length);
   std::string bodyString = std::string(body->view());
   logWarn(absl::StrCat("[onRequestBody] bodyString = \n", bodyString));
 
   // adding Body to the transaction
-  modsecTransaction->appendRequestBody((const unsigned char*)bodyString.c_str(),bodyString.length());
-  ret=process_intervention(modsecTransaction);
+  rootContext()->modsecTransaction->appendRequestBody((const unsigned char*)bodyString.c_str(),bodyString.length());
+  ret=process_intervention(rootContext()->modsecTransaction);
   if(ret!=0){
     return alertActionBody(ret);
   }
@@ -434,13 +449,13 @@ FilterDataStatus PluginContext::onRequestBody(unsigned long body_buffer_length, 
   logWarn("Request Body added");
 
   // Process body
-  if(modsecTransaction->processRequestBody()){
+  if(rootContext()->modsecTransaction->processRequestBody()){
     LOG_WARN("processRequestBody() correctly executed");
   }else{
     LOG_WARN("[!]Errors on performing processRequestBody()");
   }
   
-  ret=process_intervention(modsecTransaction);
+  ret=process_intervention(rootContext()->modsecTransaction);
   if(ret!=0){
     return alertActionBody(ret);
   }
