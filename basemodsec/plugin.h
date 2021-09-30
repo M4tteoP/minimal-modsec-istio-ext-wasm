@@ -34,8 +34,6 @@ class PluginRootContext : public RootContext {
   }
   bool onConfigure(size_t) override;
 
-  bool initprocess(modsecurity::Transaction * modsecTransaction);
-
   struct ModSecConfigStruct {
     bool enable_default;
     bool detect_sqli;
@@ -45,8 +43,6 @@ class PluginRootContext : public RootContext {
 
   modsecurity::ModSecurity *modsec;
   modsecurity::RulesSet *rules;
-  modsecurity::Transaction* modsecTransaction;
-  int counter =0;
 
  private:
   bool configure(size_t);
@@ -62,10 +58,12 @@ class PluginContext : public Context {
   FilterDataStatus onRequestBody(unsigned long, bool) override;
   FilterHeadersStatus alertActionHeader(int response);
   FilterDataStatus alertActionBody(int response);
+  modsecurity::Transaction* modsecTransaction;
 
  private:
   inline PluginRootContext* rootContext() {
     return dynamic_cast<PluginRootContext*>(this->root());
   }
+  int initprocess(modsecurity::Transaction * modsecTransaction);
 };
 

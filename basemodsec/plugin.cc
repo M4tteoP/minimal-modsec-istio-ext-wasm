@@ -294,7 +294,8 @@ bool PluginRootContext::configure(size_t configuration_size) {
   return true;
 }
 
-bool PluginRootContext::initprocess(modsecurity::Transaction * modsecTransaction){
+int PluginContext::initprocess(modsecurity::Transaction * modsecTransaction){
+  int ret=0;
   std::string clientIP;
   uint64_t clientPort;
   std::string serverIP;
@@ -304,7 +305,11 @@ bool PluginRootContext::initprocess(modsecurity::Transaction * modsecTransaction
   std::string version;
 
   // starting transaction
-  printInterventionRet("initprocess","starting",process_intervention(modsecTransaction));
+  ret = process_intervention(modsecTransaction);
+  printInterventionRet("initprocess","starting",ret);
+  if(ret != 0){
+    return ret;
+  }
 
   // connection setup
 
@@ -325,14 +330,18 @@ bool PluginRootContext::initprocess(modsecurity::Transaction * modsecTransaction
 
   // processing basic information
   modsecTransaction -> processConnection(clientIP.c_str(), clientPort, serverIP.c_str(), serverPort);
-  printInterventionRet("initprocess","processConnection",process_intervention(modsecTransaction));
+  ret = process_intervention(modsecTransaction);
+  printInterventionRet("initprocess","processConnection",ret);
+  if(ret != 0){
+    return ret;
+  }
 
   logWarn("[initprocess] Connection setup done\n");
 
   // Retrieving further information of the connection
 
   getValue({"request", "headers", ":path"}, &uri); // URI x-envoy-original-path se path modificato con rewrite
-  getValue({"request", "headers", ":method"}, &method); // Protocol 
+  getValue({"request", "headers", ":method"}, &method); // GET/POST 
   // TODO, not yet implemented http version distinction https://github.com/istio/proxy/blob/master/extensions/common/context.cc#L508 
   version = "1.1";   
  
@@ -344,33 +353,37 @@ bool PluginRootContext::initprocess(modsecurity::Transaction * modsecTransaction
   modsecTransaction->processURI(uri.c_str(), method.c_str(), version.c_str());
   
   // process URI
-  printInterventionRet("initprocess","processURI",process_intervention(modsecTransaction));
+  ret = process_intervention(modsecTransaction);
+  printInterventionRet("initprocess","processURI",ret);
+  if(ret != 0){
+    return ret;
+  }
 
   logWarn("[initprocess] Url added\n");
 
-  // TODO remove or rewrite debug purposes
-  counter++;
-  LOG_WARN(absl::StrCat("[COUNTER] H", std::to_string(counter)," ", method));
-  return true;
+  return 0;
 }
 
 FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
   int ret=0;
+  std::string method;
+  int body_size = 0;
   //std::string keyUri{":path"};
   //std::string errorUri{"/error"};
 
   // beginning of the transaction
-  free(rootContext()->modsecTransaction);
-  rootContext()->modsecTransaction = new modsecurity::Transaction(rootContext()->modsec, rootContext()->rules, NULL);
-  std::string output{""};
+  // Generation of the transaction object inside the Context of this request.
+  modsecTransaction = new modsecurity::Transaction(rootContext()->modsec, rootContext()->rules, NULL);
+  
 
-  // TODO manage returns from initprocess
-  rootContext()->initprocess(rootContext()->modsecTransaction);
+  if(initprocess(modsecTransaction)!=0){
+    return alertActionHeader(ret);
+  }
 
   // TODO remove or rewrite debug purposes  
-  std::string requestId;
-  getValue({"request", "headers", "x-request-id"}, &requestId);
-  LOG_WARN(absl::StrCat("[getValue] REQUEST ID from HEADER: ", requestId));
+  // std::string requestId;
+  // getValue({"request", "headers", "x-request-id"}, &requestId);
+  // LOG_WARN(absl::StrCat("[getValue] REQUEST ID from HEADER: ", requestId));
 
   // intercepting and collecting all the headers
   // std::vector<std::pair<std::string_view, StringView>>
@@ -387,33 +400,61 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
   // adding Headers to the transaction
   // modsecTransaction -> addRequestHeader("Host","net.tutsplus.com<script>alert('0')</script>");
   for (auto& pair : pairs) { // pair è puntatore
-    rootContext()->modsecTransaction -> addRequestHeader(std::string(pair.first),std::string(pair.second));
+    modsecTransaction -> addRequestHeader(std::string(pair.first),std::string(pair.second));
+    if(pair.first == "content-length"){
+      body_size = std::stoi(std::string(pair.second));
+    }
   }
-  ret=process_intervention(rootContext()->modsecTransaction);
+  ret=process_intervention(modsecTransaction);
   printInterventionRet("onRequestHeaders","addRequestHeader",ret);
   if(ret!=0){
     return alertActionHeader(ret);
   }
 
-  output += "Request Headers added\n";
-  logWarn(output);
-  output = "";
+  LOG_WARN("Request Headers added\n");
 
   // process Headers
-  if(rootContext()->modsecTransaction -> processRequestHeaders()){
+  if(modsecTransaction -> processRequestHeaders()){
     LOG_WARN("processRequestHeaders() correctly executed");
   }else{
     LOG_WARN("[!]Errors on performing processRequestHeaders()");
   }
-  ret=process_intervention(rootContext()->modsecTransaction);
+  ret = process_intervention(modsecTransaction);
   printInterventionRet("onRequestHeaders","processRequestHeaders",ret);
-  if(ret!=0){
+  if(ret != 0){
     return alertActionHeader(ret);
   }
+
+  getValue({"request", "headers", ":method"}, &method);
+  // getValue({"request", "headers", "content-length"}, &body_size);  // fix. atm retrieved from the for
  
-  output += "Request Headers processed with no detection\n";
-  logWarn(output);
-  output = "";
+  // TODO remove debug
+  LOG_WARN(absl::StrCat("[DEBUG] method: ",method, " content-length: ",std::to_string(body_size)));
+
+  // if request has NO body (typically GET requests), we want to still analyze the headers with modSec (typical rules at phase:2)
+  if(method == "GET" || body_size == 0){
+    // I add an empty body to the process
+    modsecTransaction->appendRequestBody((const unsigned char*)"",1); // TODO CHECK i want to provide an empty body 
+    ret=process_intervention(modsecTransaction);
+    if(ret!=0){
+      return alertActionHeader(ret);
+    }
+    // I process it
+    if(modsecTransaction->processRequestBody()){
+      LOG_WARN("[REQUEST HEADERS] processRequestBody() (empty) correctly executed");
+    }else{
+      LOG_WARN("[REQUEST HEADERS][!]Errors on performing processRequestBody() (empty)");
+    }
+    ret=process_intervention(modsecTransaction);
+    if(ret!=0){
+      return alertActionHeader(ret);
+    }
+    // No body will arrive
+    free(modsecTransaction);
+    modsecTransaction = NULL;
+  }
+
+  LOG_WARN("Request Headers processed with no detection\n");
 
   return FilterHeadersStatus::Continue;
 }
@@ -423,25 +464,33 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
 FilterDataStatus PluginContext::onRequestBody(unsigned long body_buffer_length, bool end_of_stream) {
   int ret=0;
 
+  if( modsecTransaction == NULL){
+    // Should never happen, body arrived without previously handled headers;
+    // Log and drop the request
+    LOG_WARN("[BODY][!] WARNING: Body received with modsecTransaction=NULL");
+    auto body = getBufferBytes(WasmBufferType::HttpRequestBody, 0, body_buffer_length);
+    LOG_WARN(absl::StrCat("[BODY][!] bodyString = \n", std::string(body->view())));
+    return alertActionBody(ret);
+  }
+
   // beginning of the transaction
   //modsecurity::Transaction* modsecTransaction = new modsecurity::Transaction(rootContext()->modsec, rootContext()->rules, NULL);
-  
-  // TODO manage returns from initprocess
-  //rootContext()->initprocess(modsecTransaction);
 
-  // TODO remove or rewrite debug purposes
-  LOG_WARN(absl::StrCat("[COUNTER] B", std::to_string(rootContext()->counter)));
-  std::string requestId;
-  getValue({"request", "headers", "x-request-id"}, &requestId);
-  LOG_WARN(absl::StrCat("[getValue] REQUEST ID from BODY: ", requestId));
-  
+  // TODO manage, test debug printing the whole transaction
+  // TODO to JSON not implemented, find an alternative
+  // LOG_WARN(absl::StrCat("[BODY] modsecTransaction= ",));
+
+  // removed, process now begins from onRequestHeaders and lives inside the context of the request
+  //rootContext()->initprocess(modsecTransaction); // manage returns from initprocess if implemented again
+
   auto body = getBufferBytes(WasmBufferType::HttpRequestBody, 0, body_buffer_length);
   std::string bodyString = std::string(body->view());
   logWarn(absl::StrCat("[onRequestBody] bodyString = \n", bodyString));
 
   // adding Body to the transaction
-  rootContext()->modsecTransaction->appendRequestBody((const unsigned char*)bodyString.c_str(),bodyString.length());
-  ret=process_intervention(rootContext()->modsecTransaction);
+  modsecTransaction->appendRequestBody((const unsigned char*)bodyString.c_str(),bodyString.length());
+
+  ret=process_intervention(modsecTransaction);
   if(ret!=0){
     return alertActionBody(ret);
   }
@@ -449,19 +498,23 @@ FilterDataStatus PluginContext::onRequestBody(unsigned long body_buffer_length, 
   logWarn("Request Body added");
 
   // Process body
-  if(rootContext()->modsecTransaction->processRequestBody()){
+  if(modsecTransaction->processRequestBody()){
     LOG_WARN("processRequestBody() correctly executed");
   }else{
     LOG_WARN("[!]Errors on performing processRequestBody()");
   }
   
-  ret=process_intervention(rootContext()->modsecTransaction);
+  ret=process_intervention(modsecTransaction);
   if(ret!=0){
     return alertActionBody(ret);
   }
 
   logWarn("Request Body processed with no detection\n");
-
+  
+  // connection analyzed, can free the transaction
+  // TODO qua non posso liberarlo perchè lo chiama più volte. Creo ogni volta OPPURE non dealloco (esploderà a livello di RAM?)
+  //free(modsecTransaction);
+  //modsecTransaction = NULL;
   return FilterDataStatus::Continue;
 }
 
@@ -476,10 +529,16 @@ FilterDataStatus PluginContext::onRequestBody(unsigned long body_buffer_length, 
 */
 FilterHeadersStatus PluginContext::alertActionHeader(int response){
     sendLocalResponse(403, absl::StrCat("Request dropped by alertActionHeader response= ",std::to_string(response)), "", {});
+    // request is dropped, transaction must end
+    free(modsecTransaction);
+    modsecTransaction = NULL;
     return FilterHeadersStatus::StopIteration;
 }
 
 FilterDataStatus PluginContext::alertActionBody(int response){
     sendLocalResponse(403, absl::StrCat("Request dropped by alertActionBody response= ",std::to_string(response)), "", {});
+    // request is dropped, transaction must end
+    free(modsecTransaction);
+    modsecTransaction = NULL;
     return FilterDataStatus::StopIterationNoBuffer;
 }

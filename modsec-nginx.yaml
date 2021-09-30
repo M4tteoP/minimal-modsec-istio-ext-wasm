@@ -1,12 +1,12 @@
 apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
-  name: modsec-productpage
+  name: modsec-nginx
   namespace: bookinfoextended
 spec:
   workloadSelector:
     labels:
-      app: productpage
+      app: nginx
   configPatches:
   - applyTo: HTTP_FILTER
     match:
@@ -20,7 +20,7 @@ spec:
     patch:
       operation: INSERT_BEFORE
       value:
-        name: istio.modsec-productpage
+        name: istio.modsec-nginx
         config_discovery:
           config_source:
             ads: {}
@@ -30,12 +30,12 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
-  name: modsec-productpage-config
+  name: modsec-nginx-config
   namespace: bookinfoextended
 spec:
   workloadSelector:
     labels:
-      app: productpage
+      app: nginx
   configPatches:
   - applyTo: EXTENSION_CONFIG
     match:
@@ -43,14 +43,14 @@ spec:
     patch:
       operation: ADD
       value:
-        name: istio.modsec-productpage
+        name: istio.modsec-nginx
         typed_config:
           '@type': type.googleapis.com/udpa.type.v1.TypedStruct
           type_url: type.googleapis.com/envoy.extensions.filters.http.wasm.v3.Wasm
           value:
            config:
              vm_config:
-               vm_id: basic-auth
+               vm_id: vd-nginx-wasm
                runtime: envoy.wasm.runtime.v8
                code:
                  remote:
