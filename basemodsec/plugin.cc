@@ -261,7 +261,7 @@ bool PluginRootContext::onConfigure(size_t size) {
 }
 
 bool PluginRootContext::configure(size_t configuration_size) {
-  auto configuration_data = getBufferBytes(WasmBufferType::PluginConfiguration, 0, configuration_size);
+  WasmDataPtr configuration_data = getBufferBytes(WasmBufferType::PluginConfiguration, 0, configuration_size);
   // Parse configuration JSON string.
   auto result = ::Wasm::Common::JsonParse(configuration_data->view());
   if (!result.has_value()) {
@@ -388,8 +388,8 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
   // intercepting and collecting all the headers
   // std::vector<std::pair<std::string_view, StringView>>
   LOG_WARN(std::string("onRequestHeaders ") + std::to_string(id()));
-  auto result = getRequestHeaderPairs();
-  auto pairs = result->pairs();
+  WasmDataPtr result = getRequestHeaderPairs();
+  std::vector<std::pair<std::string_view,std::string_view>> pairs = result->pairs();
   LOG_WARN(std::string("headers: ") + std::to_string(pairs.size()));
 
   // printing all the headers - DEBUG PURPOSES
@@ -469,7 +469,7 @@ FilterDataStatus PluginContext::onRequestBody(unsigned long body_buffer_length, 
     // Should never happen, body arrived without previously handled headers;
     // Log and drop the request
     LOG_WARN("[BODY][!] WARNING: Body received with modsecTransaction=NULL");
-    auto body = getBufferBytes(WasmBufferType::HttpRequestBody, 0, body_buffer_length);
+    WasmDataPtr body = getBufferBytes(WasmBufferType::HttpRequestBody, 0, body_buffer_length);
     LOG_WARN(absl::StrCat("[BODY][!] bodyString = \n", std::string(body->view())));
     return alertActionBody(ret);
   }
