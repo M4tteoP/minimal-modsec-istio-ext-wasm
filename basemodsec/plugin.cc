@@ -27,7 +27,7 @@ static RegisterContextFactory register_Example(CONTEXT_FACTORY(PluginContext), R
 
 //################################################
 //##              Support Functions             ##
-//################################################ 
+//################################################
 
 inline std::string boolToString(bool b){
   return b ? "true" : "false";
@@ -77,7 +77,7 @@ bool extractJSON(const json& configuration, PluginRootContext::ModSecConfigStruc
     LOG_WARN(absl::StrCat("failed to parse configuration for ", SQLI_KEY,". Set by default as false"));
     modSecConfig->detect_sqli = false;
   }
-  
+
   // Check XSS detection
   if(!extractBoolFromJSON(configuration, XSS_KEY, &modSecConfig->detect_xss)){
     LOG_WARN(absl::StrCat("failed to parse configuration for ", XSS_KEY,". Set by default as false"));
@@ -210,7 +210,7 @@ bool PluginRootContext::onConfigure(size_t size) {
   }
   // modSecConfig struct populated with configuration requests.
   std::string output{""};
-  
+
   // ModSecurity setup
   modsec = new modsecurity::ModSecurity();
   modsec->setConnectorInformation("ModSecurity-test v0.0.1-alpha (ModSecurity test)");
@@ -218,7 +218,7 @@ bool PluginRootContext::onConfigure(size_t size) {
 
   output += "\nModSecurity initial setup done\n";
   logWarn(output);
-  
+
   // Concatenation of the provided rules and loading
   rules = new modsecurity::RulesSet();
 
@@ -238,7 +238,7 @@ bool PluginRootContext::onConfigure(size_t size) {
   }
 
   // merging custom Rules with predefined ones
-  if (modSecConfig.custom_rules.size() > 0){  
+  if (modSecConfig.custom_rules.size() > 0){
     for (auto i = modSecConfig.custom_rules.begin(); i != modSecConfig.custom_rules.end(); ++i){
       rulesConcat+=*i;
       rulesConcat+="\n";
@@ -278,7 +278,7 @@ bool PluginRootContext::configure(size_t configuration_size) {
     return false;
   }
 
-  // Print the whole config file just for debug purposes  
+  // Print the whole config file just for debug purposes
   LOG_WARN(absl::StrCat("modSecConfig->enable_default: ", boolToString(modSecConfig.enable_default)));
   LOG_WARN(absl::StrCat("modSecConfig->detect_sqli: ", boolToString(modSecConfig.detect_sqli)));
   LOG_WARN(absl::StrCat("modSecConfig->detect_xss: ", boolToString(modSecConfig.detect_xss)));
@@ -341,17 +341,17 @@ int PluginContext::initprocess(modsecurity::Transaction * modsecTransaction){
   // Retrieving further information of the connection
 
   getValue({"request", "headers", ":path"}, &uri); // URI x-envoy-original-path se path modificato con rewrite
-  getValue({"request", "headers", ":method"}, &method); // GET/POST 
-  // TODO, not yet implemented http version distinction https://github.com/istio/proxy/blob/master/extensions/common/context.cc#L508 
-  version = "1.1";   
- 
+  getValue({"request", "headers", ":method"}, &method); // GET/POST
+  // TODO, not yet implemented http version distinction https://github.com/istio/proxy/blob/master/extensions/common/context.cc#L508
+  version = "1.1";
+
   //Logs
   logWarn(absl::StrCat("[getValue] path: ", uri));
   logWarn(absl::StrCat("[getValue] method: ", method));
   logWarn(absl::StrCat("[getValue] version: ", version));
 
   modsecTransaction->processURI(uri.c_str(), method.c_str(), version.c_str());
-  
+
   // process URI
   ret = process_intervention(modsecTransaction);
   printInterventionRet("initprocess","processURI",ret);
@@ -374,13 +374,13 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
   // beginning of the transaction
   // Generation of the transaction object inside the Context of this request.
   modsecTransaction = new modsecurity::Transaction(rootContext()->modsec, rootContext()->rules, NULL);
-  
+
 
   if(initprocess(modsecTransaction)!=0){
     return alertActionHeader(ret);
   }
 
-  // TODO remove or rewrite debug purposes  
+  // TODO remove or rewrite debug purposes
   // std::string requestId;
   // getValue({"request", "headers", "x-request-id"}, &requestId);
   // LOG_WARN(absl::StrCat("[getValue] REQUEST ID from HEADER: ", requestId));
@@ -391,7 +391,7 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
   auto result = getRequestHeaderPairs();
   auto pairs = result->pairs();
   LOG_WARN(std::string("headers: ") + std::to_string(pairs.size()));
-  
+
   // printing all the headers - DEBUG PURPOSES
   for (auto& p : pairs) {
     LOG_WARN(std::string(p.first) + std::string(" -> ") + std::string(p.second));
@@ -427,14 +427,14 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
 
   getValue({"request", "headers", ":method"}, &method);
   // getValue({"request", "headers", "content-length"}, &body_size);  // fix. atm retrieved from the for
- 
+
   // TODO remove debug
   LOG_WARN(absl::StrCat("[DEBUG] method: ",method, " content-length: ",std::to_string(body_size)));
 
   // if request has NO body (typically GET requests), we want to still analyze the headers with modSec (typical rules at phase:2)
   if(method == "GET" || body_size == 0){
     // I add an empty body to the process
-    modsecTransaction->appendRequestBody((const unsigned char*)"",1); // TODO CHECK i want to provide an empty body 
+    modsecTransaction->appendRequestBody((const unsigned char*)"",1); // TODO CHECK i want to provide an empty body
     ret=process_intervention(modsecTransaction);
     if(ret!=0){
       return alertActionHeader(ret);
@@ -450,12 +450,13 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
       return alertActionHeader(ret);
     }
     // No body will arrive
-    free(modsecTransaction);
-    modsecTransaction = NULL;
+    // delete modsecTransaction;
+    // modsecTransaction = NULL;
   }
 
   LOG_WARN("Request Headers processed with no detection\n");
 
+  //delete modsecTransaction;
   return FilterHeadersStatus::Continue;
 }
 
@@ -503,14 +504,14 @@ FilterDataStatus PluginContext::onRequestBody(unsigned long body_buffer_length, 
   }else{
     LOG_WARN("[!]Errors on performing processRequestBody()");
   }
-  
+
   ret=process_intervention(modsecTransaction);
   if(ret!=0){
     return alertActionBody(ret);
   }
 
   logWarn("Request Body processed with no detection\n");
-  
+
   // connection analyzed, can free the transaction
   // TODO qua non posso liberarlo perchè lo chiama più volte. Creo ogni volta OPPURE non dealloco (esploderà a livello di RAM?)
   //free(modsecTransaction);
@@ -521,7 +522,7 @@ FilterDataStatus PluginContext::onRequestBody(unsigned long body_buffer_length, 
 
 /*
 // Ref sendLocalResponse: https://github.com/proxy-wasm/proxy-wasm-cpp-sdk/blob/master/proxy_wasm_api.h
-// signature: 
+// signature:
     inline WasmResult sendLocalResponse(uint32_t response_code, std::string_view response_code_details,
                                     std::string_view body,
                                     const HeaderStringPairs &additional_response_headers,
@@ -530,15 +531,21 @@ FilterDataStatus PluginContext::onRequestBody(unsigned long body_buffer_length, 
 FilterHeadersStatus PluginContext::alertActionHeader(int response){
     sendLocalResponse(403, absl::StrCat("Request dropped by alertActionHeader response= ",std::to_string(response)), "", {});
     // request is dropped, transaction must end
-    free(modsecTransaction);
-    modsecTransaction = NULL;
+    // delete modsecTransaction;
+    // modsecTransaction = NULL;
     return FilterHeadersStatus::StopIteration;
 }
 
 FilterDataStatus PluginContext::alertActionBody(int response){
     sendLocalResponse(403, absl::StrCat("Request dropped by alertActionBody response= ",std::to_string(response)), "", {});
     // request is dropped, transaction must end
-    free(modsecTransaction);
-    modsecTransaction = NULL;
+    // delete modsecTransaction;
+    // modsecTransaction = NULL;
     return FilterDataStatus::StopIterationNoBuffer;
 }
+
+void PluginContext::onDelete() {
+  delete modsecTransaction;
+  modsecTransaction = NULL;
+  logWarn(std::string("onDelete " + std::to_string(id())));
+  }

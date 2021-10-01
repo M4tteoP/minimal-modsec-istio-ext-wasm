@@ -29,8 +29,7 @@ class PluginRootContext : public RootContext {
   ~PluginRootContext(){
     delete rules;
     delete modsec;
-    std::string output{"Cleanup done\n"};
-    logWarn(output);
+    logWarn("Cleanup done\n");
   }
   bool onConfigure(size_t) override;
 
@@ -56,6 +55,7 @@ class PluginContext : public Context {
 
   FilterHeadersStatus onRequestHeaders(uint32_t, bool) override;
   FilterDataStatus onRequestBody(unsigned long, bool) override;
+  void onDelete() override;
   FilterHeadersStatus alertActionHeader(int response);
   FilterDataStatus alertActionBody(int response);
   modsecurity::Transaction* modsecTransaction;
