@@ -3,7 +3,6 @@
 #include <errno.h>
 #include "plugin.h"
 
-
 using ::nlohmann::json;
 using ::Wasm::Common::JsonArrayIterate;
 using ::Wasm::Common::JsonGetField;
@@ -59,20 +58,29 @@ bool extractBoolFromJSON(const json& configuration, std::string key, bool* bool_
       *bool_ptr = false;
     }
   }else{
-    LOG_WARN(absl::StrCat("Missing field ", key));
+    LOG_WARN(absl::StrCat("[extractBoolFromJSON] Missing field ", key));
   }
   return true;
 }
 
 bool extractJSON(const json& configuration, PluginRootContext::ModSecConfigStruct *modSecConfig) {
 
-  // Check if DEFAULT CONFIG RULES must be enabled
-  if(!extractBoolFromJSON(configuration, DEFAULT_KEY, &modSecConfig->enable_default)){
+  // Basic config rules for Modsecurity
+    if(!extractBoolFromJSON(configuration, DEFAULT_KEY, &modSecConfig->enable_default)){
     LOG_WARN(absl::StrCat("failed to parse configuration for ", DEFAULT_KEY,". Set by default as true"));
-    modSecConfig->enable_default = true;
+    modSecConfig->enable_default = true; // default case: true
+  }
+
+  // Core Rule Set
+  // TODO CRS boolean
+    if(!extractBoolFromJSON(configuration, CRS_KEY, &modSecConfig->enable_crs)){
+    LOG_WARN(absl::StrCat("failed to parse configuration for ", CRS_KEY,". Set by default as true"));
+    modSecConfig->enable_crs = true; // default case: true
   }
 
   // Check SQLI detection
+  // example of configuration flexibility. Users may disable crs but still activate specific detections.
+  // if crs is true, sqli is implicitly true
   if(!extractBoolFromJSON(configuration, SQLI_KEY, &modSecConfig->detect_sqli)){
     LOG_WARN(absl::StrCat("failed to parse configuration for ", SQLI_KEY,". Set by default as false"));
     modSecConfig->detect_sqli = false;
@@ -228,6 +236,10 @@ bool PluginRootContext::onConfigure(size_t size) {
     rulesConcat+=defaultConfigRules;
     rulesConcat+="\n";
   }
+  if(modSecConfig.enable_crs==true){
+    rulesConcat+=crsRules;
+    rulesConcat+="\n";
+  }
   if(modSecConfig.detect_xss==true){
     rulesConcat+=xssRules;
     rulesConcat+="\n";
@@ -280,6 +292,7 @@ bool PluginRootContext::configure(size_t configuration_size) {
 
   // Print the whole config file just for debug purposes
   LOG_WARN(absl::StrCat("modSecConfig->enable_default: ", boolToString(modSecConfig.enable_default)));
+  LOG_WARN(absl::StrCat("modSecConfig->enable_crs: ", boolToString(modSecConfig.enable_crs)));
   LOG_WARN(absl::StrCat("modSecConfig->detect_sqli: ", boolToString(modSecConfig.detect_sqli)));
   LOG_WARN(absl::StrCat("modSecConfig->detect_xss: ", boolToString(modSecConfig.detect_xss)));
   std::string output{"modSecConfig->custom_rules:\n"};
@@ -544,8 +557,41 @@ FilterDataStatus PluginContext::alertActionBody(int response){
     return FilterDataStatus::StopIterationNoBuffer;
 }
 
-void PluginContext::onDelete() {
+void PluginContext::onDelete(){
   delete modsecTransaction;
   modsecTransaction = NULL;
-  logWarn(std::string("onDelete " + std::to_string(id())));
+  LOG_WARN(std::string("onDelete " + std::to_string(id())));
   }
+
+
+
+
+// --------------------- RESPONSE, TODO sort -----------------------
+FilterDataStatus PluginContext::onResponseBody(unsigned long body_buffer_length, bool end_of_stream){
+
+  WasmDataPtr responseBody = getBufferBytes(WasmBufferType::HttpResponseBody, 0, body_buffer_length);
+  LOG_WARN(absl::StrCat("[onResponseBody] responseBodyString = \n", std::string(responseBody->view())));
+
+  // TODO provide it to modsec
+  // TODO handle alert
+
+  // To edit the response: setBuffer(WasmBufferType::HttpResponseBody, 0, 12, "Hello, world");
+
+  return FilterDataStatus::Continue;
+}
+
+FilterHeadersStatus PluginContext::onResponseHeaders(uint32_t, bool) {
+  LOG_WARN(std::string("[onResponseHeaders] ") + std::to_string(id()));
+  WasmDataPtr result = getResponseHeaderPairs();
+  std::vector<std::pair<std::string_view,std::string_view>> pairs = result->pairs();
+  // TODO flag DEBUG
+  LOG_WARN(std::string("[onResponseHeaders][DEBUG] Printing response headers: ") + std::to_string(pairs.size()));
+  for (auto &p : pairs) {
+    LOG_WARN(std::string(p.first) + std::string(" -> ") + std::string(p.second));
+  }
+
+  // TODO provide it to modsec
+  // TODO handle alert
+
+  return FilterHeadersStatus::Continue;
+}

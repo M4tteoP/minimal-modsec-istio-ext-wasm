@@ -2,14 +2,15 @@
 //##############################
 //##      Hardcoded Rules     ##
 //##############################
-//by https://www.cescaper.com/
-//json escape post cescaper for yaml config: https://jsonformatter.curiousconcept.com/# 
+// Useful links:
+// https://www.cescaper.com/
+// https://jsonformatter.curiousconcept.com/
 
 
-// Default Config Rules
-// TODO merge modsecurity.conf + crs-setup.conf
-// SecRuleEngine On 
-// crs_setup_version indispensabile per far funzionare il CRS
+// ###  Default Config Rules  ###
+// merge of needed rules from modsecurity.conf + crs-setup.conf
+// crs_setup_version is mandatory for CRS
+// SecDefaultAction set to enable traditional mode (see https://coreruleset.org/docs/anomaly.html)
 /*
 SecRuleEngine DetectionOnly
 SecRequestBodyAccess On
@@ -63,18 +64,11 @@ std::string defaultConfigRules = "SecRuleEngine Detect"
    "otice_anomaly_score="
    "2\"";
 
-// Default xss Rules
-// TODO merge XSS CRS
+// ###  Default XSS Rules  ###
+// TODO merge XSS CRS RULES
 /*
-SecRule ARGS|REQUEST_HEADERS "@rx <script>" "id:101,msg:'XSS Attack',severity:ERROR,deny,status:404"
+TODO see file ...
 */
-// std::string xssRules = "SecRule ARGS|REQUEST"
-//    "_HEADERS \"@rx <scri"
-//    "pt>\" \"id:101,msg:"
-//    "\'XSS Attack\',sever"
-//    "ity:CRITICAL,deny,statu"
-//    "s:404\"";
-
 
 std::string xssRules = "SecRule REQUEST_COOK"
    "IES|!REQUEST_COOKIES"
@@ -136,14 +130,20 @@ std::string xssRules = "SecRule REQUEST_COOK"
    "critical_anomaly_sco"
    "re}\'\"";
 
-// Default sqli Rules
-// TODO at least a dummy SQLI RULE
+// ###  Default sqli Rules  ###
+// TODO insert SQLI CRS RULES
+/*
+// TODO insert file name
+*/
+
+// ###  CoreRuleSet rules  ###
+// Generated via:
 // for f in ./rules/*.conf; do cat ${f} >> ./rulethemall.conf; done
 // sed -i '/^#/d' ./rulethemall.conf
 /*
-....
+TODO indicate the file where all the rules are present: rulethemall.conf
 */
-std::string sqliRules = "SecComponentSignatur"
+std::string crsRules = "SecComponentSignatur"
    "e \"OWASP_CRS/3.3.2"
    "\"\r\n\r\n"
    "SecRule &TX:crs_setu"

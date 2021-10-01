@@ -17,6 +17,7 @@ static const std::string EMPTY_STRING;
 // My custom JSON words
 #define JSON_NAME "modsec_config"
 #define DEFAULT_KEY "enable_default"
+#define CRS_KEY "enable_crs"
 #define SQLI_KEY "enable_sqli"
 #define XSS_KEY "enable_xss"
 #define CUSTOM_KEY "custom_rules"
@@ -35,6 +36,7 @@ class PluginRootContext : public RootContext {
 
   struct ModSecConfigStruct {
     bool enable_default;
+    bool enable_crs;
     bool detect_sqli;
     bool detect_xss;
     std::vector<std::string> custom_rules;
@@ -55,10 +57,13 @@ class PluginContext : public Context {
 
   FilterHeadersStatus onRequestHeaders(uint32_t, bool) override;
   FilterDataStatus onRequestBody(unsigned long, bool) override;
+  FilterHeadersStatus onResponseHeaders(uint32_t, bool) override;
+  FilterDataStatus onResponseBody(unsigned long, bool) override;
   void onDelete() override;
   FilterHeadersStatus alertActionHeader(int response);
   FilterDataStatus alertActionBody(int response);
   modsecurity::Transaction* modsecTransaction;
+  
 
  private:
   inline PluginRootContext* rootContext() {
