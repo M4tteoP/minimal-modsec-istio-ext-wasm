@@ -47,7 +47,6 @@ class PluginRootContext : public RootContext {
 
  private:
   bool configure(size_t);
-  //bool extractJSON( const json& configuration, PluginRootContext::ModSecConfigStruct* modSecConfig);
   PluginRootContext::ModSecConfigStruct modSecConfig;
 };
 
@@ -62,6 +61,8 @@ class PluginContext : public Context {
   void onDelete() override;
   FilterHeadersStatus alertActionHeader(int response);
   FilterDataStatus alertActionBody(int response);
+  // Modsecurity object, it will survive across callbacks of the SAME stream
+  // Deallocation inside onDelete(), at the end of the connection
   modsecurity::Transaction* modsecTransaction;
   
 
@@ -69,6 +70,6 @@ class PluginContext : public Context {
   inline PluginRootContext* rootContext() {
     return dynamic_cast<PluginRootContext*>(this->root());
   }
-  int initprocess(modsecurity::Transaction * modsecTransaction);
+  int initTransaction(modsecurity::Transaction * modsecTransaction);
 };
 
