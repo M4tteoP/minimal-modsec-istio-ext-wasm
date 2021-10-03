@@ -50,7 +50,7 @@ spec:
           value:
            config:
              vm_config:
-               vm_id: vd-nginx-wasm
+               vm_id: vm-nginx
                runtime: envoy.wasm.runtime.v8
                code:
                  remote:
@@ -69,10 +69,11 @@ spec:
                    "modsec_config": [
                      {
                        "enable_default": "yes",
+                       "enable_crs": "yes",
                        "enable_sqli": "yes",
-                       "enable_xss": "no",
+                       "enable_xss": "yes",
                        "custom_rules":[
-                       "SecRule ARGS \"@rx pippo\" \"id:103,phase:1,t:lowercase,deny\"",
+                       "SecRule ARGS \"@rx matteo\" \"id:103,phase:1,t:lowercase,deny\"",
                        "SecRuleRemoveById 920280"
                        ]
                      }

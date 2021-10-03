@@ -1,0 +1,475 @@
+quale libreria mancante
+RESPONSE_BODY  <--- sistemato
+leggere file .data (impatto su 10ina di regole)
+
+
+Rules error. File: <<reference missing or not informed>>. Line: 2291. Column: 22. This version of ModSecurity was not compiled with GeoIP or MaxMind support.
+
+
+SecRule TX:HIGH_RISK_COUNTRY_CODES "!@rx ^$" \
+    "id:910100,\
+    phase:2,\
+    block,\
+    t:none,\
+    msg:'Client IP is from a HIGH Risk Country Location',\
+    logdata:'%{MATCHED_VAR}',\
+    tag:'application-multi',\
+    tag:'language-multi',\
+    tag:'platform-multi',\
+    tag:'attack-reputation-ip',\
+    tag:'paranoia-level/1',\
+    tag:'OWASP_CRS',\
+    ver:'OWASP_CRS/3.3.2',\
+    severity:'CRITICAL',\
+    chain"
+    SecRule TX:REAL_IP "@geoLookup" \
+        "chain"
+        SecRule GEO:COUNTRY_CODE "@within %{tx.high_risk_country_codes}" \
+            "setvar:'tx.anomaly_score_pl1=+%{tx.critical_anomaly_score}',\
+            setvar:'ip.reput_block_flag=1',\
+            setvar:'ip.reput_block_reason=%{rule.msg}',\
+            expirevar:'ip.reput_block_flag=%{tx.reput_block_duration}'"
+
+
+
+SecRule REQUEST_HEADERS:User-Agent "@pmFromFile scanners-user-agents.data" \
+    "id:913100,\
+    phase:2,\
+    block,\
+    capture,\
+    t:none,t:lowercase,\
+    msg:'Found User-Agent associated with security scanner',\
+    logdata:'Matched Data: %{TX.0} found within %{MATCHED_VAR_NAME}: %{MATCHED_VAR}',\
+    tag:'application-multi',\
+    tag:'language-multi',\
+    tag:'platform-multi',\
+    tag:'attack-reputation-scanner',\
+    tag:'paranoia-level/1',\
+    tag:'OWASP_CRS',\
+    tag:'capec/1000/118/224/541/310',\
+    tag:'PCI/6.5.10',\
+    ver:'OWASP_CRS/3.3.2',\
+    severity:'CRITICAL',\
+    setvar:'tx.anomaly_score_pl1=+%{tx.critical_anomaly_score}',\
+    setvar:'ip.reput_block_flag=1',\
+    setvar:'ip.reput_block_reason=%{rule.msg}',\
+    expirevar:'ip.reput_block_flag=%{tx.reput_block_duration}'"
+
+SecRule REQUEST_HEADERS_NAMES|REQUEST_HEADERS "@pmFromFile scanners-headers.data" \
+    "id:913110,\
+    phase:2,\
+    block,\
+    capture,\
+    t:none,t:lowercase,\
+    msg:'Found request header associated with security scanner',\
+    logdata:'Matched Data: %{TX.0} found within %{MATCHED_VAR_NAME}: %{MATCHED_VAR}',\
+    tag:'application-multi',\
+    tag:'language-multi',\
+    tag:'platform-multi',\
+    tag:'attack-reputation-scanner',\
+    tag:'paranoia-level/1',\
+    tag:'OWASP_CRS',\
+    tag:'capec/1000/118/224/541/310',\
+    tag:'PCI/6.5.10',\
+    ver:'OWASP_CRS/3.3.2',\
+    severity:'CRITICAL',\
+    setvar:'tx.anomaly_score_pl1=+%{tx.critical_anomaly_score}',\
+    setvar:'ip.reput_block_flag=1',\
+    setvar:'ip.reput_block_reason=%{rule.msg}',\
+    expirevar:'ip.reput_block_flag=%{tx.reput_block_duration}'"
+
+
+
+SecRule REQUEST_FILENAME|ARGS "@pmFromFile scanners-urls.data" \
+    "id:913120,\
+    phase:2,\
+    block,\
+    capture,\
+    t:none,t:lowercase,\
+    msg:'Found request filename/argument associated with security scanner',\
+    logdata:'Matched Data: %{TX.0} found within %{MATCHED_VAR_NAME}: %{MATCHED_VAR}',\
+    tag:'application-multi',\
+    tag:'language-multi',\
+    tag:'platform-multi',\
+    tag:'attack-reputation-scanner',\
+    tag:'paranoia-level/1',\
+    tag:'OWASP_CRS',\
+    tag:'capec/1000/118/224/541/310',\
+    tag:'PCI/6.5.10',\
+    ver:'OWASP_CRS/3.3.2',\
+    severity:'CRITICAL',\
+    setvar:'tx.anomaly_score_pl1=+%{tx.critical_anomaly_score}',\
+    setvar:'ip.reput_block_flag=1',\
+    setvar:'ip.reput_block_reason=%{rule.msg}',\
+    expirevar:'ip.reput_block_flag=%{tx.reput_block_duration}'"
+
+
+    SecRule REQUEST_HEADERS:User-Agent "@pmFromFile scripting-user-agents.data" \
+    "id:913101,\
+    phase:2,\
+    block,\
+    capture,\
+    t:none,t:lowercase,\
+    msg:'Found User-Agent associated with scripting/generic HTTP client',\
+    logdata:'Matched Data: %{TX.0} found within %{MATCHED_VAR_NAME}: %{MATCHED_VAR}',\
+    tag:'application-multi',\
+    tag:'language-multi',\
+    tag:'platform-multi',\
+    tag:'attack-reputation-scripting',\
+    tag:'OWASP_CRS',\
+    tag:'capec/1000/118/224/541/310',\
+    tag:'PCI/6.5.10',\
+    tag:'paranoia-level/2',\
+    ver:'OWASP_CRS/3.3.2',\
+    severity:'CRITICAL',\
+    setvar:'tx.anomaly_score_pl2=+%{tx.critical_anomaly_score}',\
+    setvar:'ip.reput_block_flag=1',\
+    setvar:'ip.reput_block_reason=%{rule.msg}',\
+    expirevar:'ip.reput_block_flag=%{tx.reput_block_duration}'"
+
+
+
+SecRule REQUEST_HEADERS:User-Agent "@pmFromFile crawlers-user-agents.data" \
+    "id:913102,\
+    phase:2,\
+    block,\
+    capture,\
+    t:none,t:lowercase,\
+    msg:'Found User-Agent associated with web crawler/bot',\
+    logdata:'Matched Data: %{TX.0} found within %{MATCHED_VAR_NAME}: %{MATCHED_VAR}',\
+    tag:'application-multi',\
+    tag:'language-multi',\
+    tag:'platform-multi',\
+    tag:'attack-reputation-crawler',\
+    tag:'OWASP_CRS',\
+    tag:'capec/1000/118/224/541/310',\
+    tag:'PCI/6.5.10',\
+    tag:'paranoia-level/2',\
+    ver:'OWASP_CRS/3.3.2',\
+    severity:'CRITICAL',\
+    setvar:'tx.anomaly_score_pl2=+%{tx.critical_anomaly_score}',\
+    setvar:'ip.reput_block_flag=1',\
+    setvar:'ip.reput_block_reason=%{rule.msg}',\
+    expirevar:'ip.reput_block_flag=%{tx.reput_block_duration}'"
+
+
+    SecRule REQUEST_FILENAME "@pmFromFile restricted-files.data" \
+    "id:930130,\
+    phase:2,\
+    block,\
+    capture,\
+    t:none,t:utf8toUnicode,t:urlDecodeUni,t:normalizePathWin,t:lowercase,\
+    msg:'Restricted File Access Attempt',\
+    logdata:'Matched Data: %{TX.0} found within %{MATCHED_VAR_NAME}: %{MATCHED_VAR}',\
+    tag:'application-multi',\
+    tag:'language-multi',\
+    tag:'platform-multi',\
+    tag:'attack-lfi',\
+    tag:'paranoia-level/1',\
+    tag:'OWASP_CRS',\
+    tag:'capec/1000/255/153/126',\
+    tag:'PCI/6.5.4',\
+    ver:'OWASP_CRS/3.3.2',\
+    severity:'CRITICAL',\
+    setvar:'tx.lfi_score=+%{tx.critical_anomaly_score}',\
+    setvar:'tx.anomaly_score_pl1=+%{tx.critical_anomaly_score}'"
+
+
+
+    SecRule REQUEST_COOKIES|!REQUEST_COOKIES:/__utm/|REQUEST_COOKIES_NAMES|ARGS_NAMES|ARGS|XML:/* "@pmFromFile windows-powershell-commands.data" \
+    "id:932120,\
+    phase:2,\
+    block,\
+    capture,\
+    t:none,t:urlDecodeUni,t:cmdLine,t:lowercase,\
+    msg:'Remote Command Execution: Windows PowerShell Command Found',\
+    logdata:'Matched Data: %{TX.0} found within %{MATCHED_VAR_NAME}: %{MATCHED_VAR}',\
+    tag:'application-multi',\
+    tag:'language-shell',\
+    tag:'language-powershell',\
+    tag:'platform-windows',\
+    tag:'attack-rce',\
+    tag:'paranoia-level/1',\
+    tag:'OWASP_CRS',\
+    tag:'capec/1000/152/248/88',\
+    tag:'PCI/6.5.2',\
+    ctl:auditLogParts=+E,\
+    ver:'OWASP_CRS/3.3.2',\
+    severity:'CRITICAL',\
+    setvar:'tx.rce_score=+%{tx.critical_anomaly_score}',\
+    setvar:'tx.anomaly_score_pl1=+%{tx.critical_anomaly_score}'"
+
+
+    SecRule REQUEST_COOKIES|!REQUEST_COOKIES:/__utm/|REQUEST_COOKIES_NAMES|ARGS_NAMES|ARGS|XML:/* "@pmFromFile unix-shell.data" \
+    "id:932160,\
+    phase:2,\
+    block,\
+    capture,\
+    t:none,t:urlDecodeUni,t:cmdLine,t:normalizePath,t:lowercase,\
+    msg:'Remote Command Execution: Unix Shell Code Found',\
+    logdata:'Matched Data: %{TX.0} found within %{MATCHED_VAR_NAME}: %{MATCHED_VAR}',\
+    tag:'application-multi',\
+    tag:'language-shell',\
+    tag:'platform-unix',\
+    tag:'attack-rce',\
+    tag:'paranoia-level/1',\
+    tag:'OWASP_CRS',\
+    tag:'capec/1000/152/248/88',\
+    tag:'PCI/6.5.2',\
+    ctl:auditLogParts=+E,\
+    ver:'OWASP_CRS/3.3.2',\
+    severity:'CRITICAL',\
+    setvar:'tx.rce_score=+%{tx.critical_anomaly_score}',\
+    setvar:'tx.anomaly_score_pl1=+%{tx.critical_anomaly_score}'"
+
+
+
+    SecRule FILES|REQUEST_HEADERS:X-Filename|REQUEST_HEADERS:X_Filename|REQUEST_HEADERS:X-File-Name \
+    "@pmFromFile restricted-upload.data" \
+    "id:932180,\
+    phase:2,\
+    block,\
+    capture,\
+    t:none,t:lowercase,\
+    msg:'Restricted File Upload Attempt',\
+    logdata:'Matched Data: %{TX.0} found within %{MATCHED_VAR_NAME}: %{MATCHED_VAR}',\
+    tag:'application-multi',\
+    tag:'language-multi',\
+    tag:'platform-multi',\
+    tag:'attack-rce',\
+    tag:'paranoia-level/1',\
+    tag:'OWASP_CRS',\
+    tag:'capec/1000/152/248/88',\
+    tag:'PCI/6.5.2',\
+    ver:'OWASP_CRS/3.3.2',\
+    severity:'CRITICAL',\
+    setvar:'tx.lfi_score=+%{tx.critical_anomaly_score}',\
+    setvar:'tx.anomaly_score_pl1=+%{tx.critical_anomaly_score}'"
+
+
+
+    SecRule REQUEST_COOKIES|!REQUEST_COOKIES:/__utm/|REQUEST_COOKIES_NAMES|ARGS_NAMES|ARGS|XML:/* "@pmFromFile php-config-directives.data" \
+    "id:933120,\
+    phase:2,\
+    block,\
+    capture,\
+    t:none,t:urlDecodeUni,t:normalisePath,t:lowercase,\
+    msg:'PHP Injection Attack: Configuration Directive Found',\
+    logdata:'Matched Data: %{TX.0} found within %{MATCHED_VAR_NAME}: %{MATCHED_VAR}',\
+    tag:'application-multi',\
+    tag:'language-php',\
+    tag:'platform-multi',\
+    tag:'attack-injection-php',\
+    tag:'paranoia-level/1',\
+    tag:'OWASP_CRS',\
+    tag:'capec/1000/152/242',\
+    ctl:auditLogParts=+E,\
+    ver:'OWASP_CRS/3.3.2',\
+    severity:'CRITICAL',\
+    chain"
+    SecRule MATCHED_VARS "@pm =" \
+        "capture,\
+        setvar:'tx.php_injection_score=+%{tx.critical_anomaly_score}',\
+        setvar:'tx.anomaly_score_pl1=+%{tx.critical_anomaly_score}'"
+
+
+SecRule REQUEST_COOKIES|!REQUEST_COOKIES:/__utm/|REQUEST_COOKIES_NAMES|ARGS_NAMES|ARGS|XML:/* "@pmFromFile php-variables.data" \
+    "id:933130,\
+    phase:2,\
+    block,\
+    capture,\
+    t:none,t:normalisePath,t:urlDecodeUni,t:lowercase,\
+    msg:'PHP Injection Attack: Variables Found',\
+    logdata:'Matched Data: %{TX.0} found within %{MATCHED_VAR_NAME}: %{MATCHED_VAR}',\
+    tag:'application-multi',\
+    tag:'language-php',\
+    tag:'platform-multi',\
+    tag:'attack-injection-php',\
+    tag:'paranoia-level/1',\
+    tag:'OWASP_CRS',\
+    tag:'capec/1000/152/242',\
+    ctl:auditLogParts=+E,\
+    ver:'OWASP_CRS/3.3.2',\
+    severity:'CRITICAL',\
+    setvar:'tx.php_injection_score=+%{tx.critical_anomaly_score}',\
+    setvar:'tx.anomaly_score_pl1=+%{tx.critical_anomaly_score}'"
+
+
+
+    SecRule REQUEST_COOKIES|!REQUEST_COOKIES:/__utm/|REQUEST_COOKIES_NAMES|REQUEST_FILENAME|ARGS_NAMES|ARGS|XML:/* "@pmFromFile php-function-names-933150.data" \
+    "id:933150,\
+    phase:2,\
+    block,\
+    capture,\
+    t:none,t:lowercase,\
+    msg:'PHP Injection Attack: High-Risk PHP Function Name Found',\
+    logdata:'Matched Data: %{TX.0} found within %{MATCHED_VAR_NAME}: %{MATCHED_VAR}',\
+    tag:'application-multi',\
+    tag:'language-php',\
+    tag:'platform-multi',\
+    tag:'attack-injection-php',\
+    tag:'paranoia-level/1',\
+    tag:'OWASP_CRS',\
+    tag:'capec/1000/152/242',\
+    ctl:auditLogParts=+E,\
+    ver:'OWASP_CRS/3.3.2',\
+    severity:'CRITICAL',\
+    setvar:'tx.php_injection_score=+%{tx.critical_anomaly_score}',\
+    setvar:'tx.anomaly_score_pl1=+%{tx.critical_anomaly_score}'"
+
+
+
+    SecRule REQUEST_COOKIES|!REQUEST_COOKIES:/__utm/|REQUEST_COOKIES_NAMES|REQUEST_FILENAME|ARGS_NAMES|ARGS|XML:/* "@pmFromFile php-function-names-933151.data" \
+    "id:933151,\
+    phase:2,\
+    block,\
+    capture,\
+    t:none,t:lowercase,\
+    msg:'PHP Injection Attack: Medium-Risk PHP Function Name Found',\
+    logdata:'Matched Data: %{TX.0} found within %{MATCHED_VAR_NAME}: %{MATCHED_VAR}',\
+    tag:'application-multi',\
+    tag:'language-php',\
+    tag:'platform-multi',\
+    tag:'attack-injection-php',\
+    tag:'OWASP_CRS',\
+    tag:'capec/1000/152/242',\
+    tag:'paranoia-level/2',\
+    ctl:auditLogParts=+E,\
+    ver:'OWASP_CRS/3.3.2',\
+    severity:'CRITICAL',\
+    chain"
+    SecRule MATCHED_VARS "@pm (" \
+        "capture,\
+        setvar:'tx.php_injection_score=+%{tx.critical_anomaly_score}',\
+        setvar:'tx.anomaly_score_pl2=+%{tx.critical_anomaly_score}'"
+
+
+
+SecRule ARGS|ARGS_NAMES|REQUEST_COOKIES|!REQUEST_COOKIES:/__utm/|REQUEST_COOKIES_NAMES|REQUEST_BODY|REQUEST_FILENAME|REQUEST_HEADERS|XML:/*|XML://@* \
+    "@pmFromFile java-classes.data" \
+    "id:944130,\
+    phase:2,\
+    block,\
+    t:none,t:lowercase,\
+    log,\
+    msg:'Suspicious Java class detected',\
+    logdata:'Matched Data: %{MATCHED_VAR} found within %{MATCHED_VAR_NAME}',\
+    tag:'application-multi',\
+    tag:'language-java',\
+    tag:'platform-multi',\
+    tag:'attack-rce',\
+    tag:'OWASP_CRS',\
+    tag:'capec/1000/152/248',\
+    tag:'PCI/6.5.2',\
+    tag:'paranoia-level/1',\
+    ver:'OWASP_CRS/3.3.2',\
+    severity:'CRITICAL',\
+    setvar:'tx.rce_score=+%{tx.critical_anomaly_score}',\
+    setvar:'tx.anomaly_score_pl1=+%{tx.critical_anomaly_score}'"
+
+
+
+    SecRule RESPONSE_BODY "@pmFromFile sql-errors.data" \
+    "id:951100,\
+    phase:4,\
+    pass,\
+    t:none,\
+    nolog,\
+    tag:'application-multi',\
+    tag:'language-multi',\
+    tag:'platform-multi',\
+    tag:'attack-disclosure',\
+    tag:'paranoia-level/1',\
+    tag:'OWASP_CRS',\
+    tag:'capec/1000/118/116/54',\
+    ver:'OWASP_CRS/3.3.2',\
+    setvar:'tx.sql_error_match=1'"
+
+SecRule RESPONSE_BODY "@pmFromFile java-code-leakages.data" \
+    "id:952100,\
+    phase:4,\
+    block,\
+    capture,\
+    t:none,\
+    msg:'Java Source Code Leakage',\
+    logdata:'Matched Data: %{TX.0} found within %{MATCHED_VAR_NAME}: %{MATCHED_VAR}',\
+    tag:'application-multi',\
+    tag:'language-java',\
+    tag:'platform-multi',\
+    tag:'attack-disclosure',\
+    tag:'paranoia-level/1',\
+    tag:'OWASP_CRS',\
+    tag:'capec/1000/118/116',\
+    tag:'PCI/6.5.6',\
+    ctl:auditLogParts=+E,\
+    ver:'OWASP_CRS/3.3.2',\
+    severity:'ERROR',\
+    setvar:'tx.outbound_anomaly_score_pl1=+%{tx.error_anomaly_score}',\
+    setvar:'tx.anomaly_score_pl1=+%{tx.error_anomaly_score}'"
+
+SecRule RESPONSE_BODY "@pmFromFile java-errors.data" \
+    "id:952110,\
+    phase:4,\
+    block,\
+    capture,\
+    t:none,\
+    msg:'Java Errors',\
+    logdata:'Matched Data: %{TX.0} found within %{MATCHED_VAR_NAME}: %{MATCHED_VAR}',\
+    tag:'application-multi',\
+    tag:'language-java',\
+    tag:'platform-multi',\
+    tag:'attack-disclosure',\
+    tag:'paranoia-level/1',\
+    tag:'OWASP_CRS',\
+    tag:'capec/1000/118/116',\
+    tag:'PCI/6.5.6',\
+    ctl:auditLogParts=+E,\
+    ver:'OWASP_CRS/3.3.2',\
+    severity:'ERROR',\
+    setvar:'tx.outbound_anomaly_score_pl1=+%{tx.error_anomaly_score}',\
+    setvar:'tx.anomaly_score_pl1=+%{tx.error_anomaly_score}'"
+
+
+SecRule REQUEST_COOKIES|!REQUEST_COOKIES:/__utm/|REQUEST_COOKIES_NAMES|ARGS_NAMES|ARGS|XML:/* "@pmFromFile lfi-os-files.data" \
+    "id:930120,\
+    phase:2,\
+    block,\
+    capture,\
+    t:none,t:utf8toUnicode,t:urlDecodeUni,t:normalizePathWin,t:lowercase,\
+    msg:'OS File Access Attempt',\
+    logdata:'Matched Data: %{TX.0} found within %{MATCHED_VAR_NAME}: %{MATCHED_VAR}',\
+    tag:'application-multi',\
+    tag:'language-multi',\
+    tag:'platform-multi',\
+    tag:'attack-lfi',\
+    tag:'paranoia-level/1',\
+    tag:'OWASP_CRS',\
+    tag:'capec/1000/255/153/126',\
+    tag:'PCI/6.5.4',\
+    ver:'OWASP_CRS/3.3.2',\
+    severity:'CRITICAL',\
+    setvar:'tx.lfi_score=+%{tx.critical_anomaly_score}',\
+    setvar:'tx.anomaly_score_pl1=+%{tx.critical_anomaly_score}'"
+
+
+
+
+
+
+
+Anomaly level che si alzano troppo.
+
+Solo la get: non ha l'host, ma comunque passa
+
+ * Match, but no disruptive action: ModSecurity: Warning. Matched "Operator `Eq' with parameter `0' against variable `REQUEST_HEADERS:Host' (Value: `0' ) [file "<<reference missing or not informed>>"] [line "2948"] [id "920280"] [rev ""] [msg "Request Missing a Host Header"] [data ""] [severity "4"] [ver "OWASP_CRS/3.3.2"] [maturity "0"] [accuracy "0"] [tag "application-multi"] [tag "language-multi"] [tag "platform-multi"] [tag "attack-protocol"] [tag "paranoia-level/1"] [tag "OWASP_CRS"] [tag "capec/1000/210/272"] [tag "PCI/6.5.10"] [hostname "10.42.0.130"] [uri "/productpage"] [unique_id "1633003341"] [ref ""]
+
+
+
+la post viene bloccata: è solo lo score che diventa troppo alto. 
+siamo dietro ad un proxy. pacchetto che non rispetta il formato
+modulare lo score
+rimuovere regola
+
+
+ModSecurity: Access denied with code 403 (phase 2). Matched "Operator `Ge' with parameter `5' against variable `TX:ANOMALY_SCORE' (Value: `9' ) [file "<<reference missing or not informed>>"] [line "6832"] [id "949110"] [rev ""] [msg "Inbound Anomaly Score Exceeded (Total Score: 9)"] [data ""] [severity "2"] [ver "OWASP_CRS/3.3.2"] [maturity "0"] [accuracy "0"] [tag "application-multi"] [tag "language-multi"] [tag "platform-multi"] [tag "attack-generic"] [hostname "10.42.0.130"] [uri "/login"] [unique_id "1633003414"] [ref ""]intervention.status = 403
+Intervention, returning code: 403
