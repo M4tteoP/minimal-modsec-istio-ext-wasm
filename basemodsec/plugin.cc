@@ -285,7 +285,6 @@ bool PluginRootContext::configure(size_t configuration_size) {
 //#########################################################
 //##              Stream Callbacks Functions             ##
 //#########################################################
-
 // The scope of PluginContext is limited to the single request
 // Deallocation of elements must be performed meticulously
 
@@ -422,7 +421,6 @@ int PluginContext::initTransaction(modsecurity::Transaction * modsecTransaction)
   LOG_WARN("[initTransaction] Connection setup done");
 
   // Retrieving further information of the connection
-
   getValue({"request", "headers", ":path"}, &uri); // URI x-envoy-original-path se path modificato con rewrite
   getValue({"request", "headers", ":method"}, &method); // GET/POST
   // TODO, not yet implemented http version distinction https://github.com/istio/proxy/blob/master/extensions/common/context.cc#L508
@@ -526,9 +524,9 @@ FilterHeadersStatus PluginContext::onResponseHeaders(uint32_t, bool) {
   // adding headers to the modsec transaction
   for (auto& pair : pairs) {
     modsecTransaction -> addResponseHeader(std::string(pair.first),std::string(pair.second));
-    // TODO rework this if to retrive the response code (int), needed for processResponseHeaders
+    // TODO rework this to retrive the response code (int), needed for processResponseHeaders
     // if(pair.first == "content-length"){
-    //   body_size = std::stoi(std::string(pair.second));
+    //  body_size = std::stoi(std::string(pair.second));
     // }
   }
 
@@ -544,7 +542,7 @@ FilterHeadersStatus PluginContext::onResponseHeaders(uint32_t, bool) {
   // TODO response code
   // TODO: HTTP version
   // https://github.com/SpiderLabs/ModSecurity/blob/bf881a4eda343d37629e39ede5e28b70dc4067c0/src/transaction.cc#L1048
-  modsecTransaction->processResponseHeaders("","HTTP 1.1")
+  modsecTransaction->processResponseHeaders("200","HTTP 1.1");
   ret=process_intervention(modsecTransaction);
   printInterventionRet("onResponseHeaders","processResponseHeaders",ret);
   if(ret!=0){
@@ -555,7 +553,6 @@ FilterHeadersStatus PluginContext::onResponseHeaders(uint32_t, bool) {
   return FilterHeadersStatus::Continue;
 }
 
-
 //######################################
 //#         onResponseBody             #
 //######################################
@@ -564,7 +561,6 @@ FilterDataStatus PluginContext::onResponseBody(unsigned long body_buffer_length,
   int ret=0;
   WasmDataPtr responseBody = getBufferBytes(WasmBufferType::HttpResponseBody, 0, body_buffer_length);
   std::string responseBodyString = std::string(responseBody->view());
-
 
   if(modsecTransaction == NULL){
     // Should never happen, the request should have generated the context
@@ -602,7 +598,6 @@ FilterDataStatus PluginContext::onResponseBody(unsigned long body_buffer_length,
   }
 
   logWarn("[onResponseBody] Response Body processed with no detection\n");
-
   return FilterDataStatus::Continue;
 }
 
@@ -614,9 +609,7 @@ void PluginContext::onDelete(){
   delete modsecTransaction;
   modsecTransaction = NULL;
   LOG_WARN(std::string("[onDelete][OK] " + std::to_string(id())));
-  }
-
-
+}
 
 //###################################
 //#         Alert Functions         #
