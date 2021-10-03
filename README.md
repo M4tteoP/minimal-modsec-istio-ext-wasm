@@ -6,7 +6,7 @@ WAF WASM Filter is based on [Libmodsecurity](https://github.com/SpiderLabs/ModSe
 WAF functionalities, implemented as a WebAssembly module, extend the Envoy proxy security capabilities across the Istio service mesh.
 
 ## Repository Structure
---------
+
 - WIP
 
 # Quick Deployment Guide
@@ -34,10 +34,8 @@ Check the correct deployment:
 # Developer Guide
 **TODO**: some text here
 ## Building Libmodsecurity for WASM
---------
 WIP
 ## Building the Filter
---------
 ### Environment setup
 The building process is based on Bazel, downloaded via its wrapper Bazelisk.
  ```
@@ -65,7 +63,6 @@ The wasm file will be generated under `./bazel-bin/` folder.
 For further details refer to [Develop a Wasm extension with C++](https://github.com/istio-ecosystem/wasm-extensions/blob/master/doc/write-a-wasm-extension-with-cpp.md).
 
 ## Deployment
---------
 Two `EnvoyFilter` resources are needed to deploy the just built extension with Istio:
 - The first declares the filter as HTTP_FILTER and specifies its position inside the filter chain of envoy.
 - The second ones provides configuration to the filter including:
@@ -77,14 +74,10 @@ Two `EnvoyFilter` resources are needed to deploy the just built extension with I
 
 
 ## Configuration
---------
 WIP
 ## Implementation Examplantion
---------
 WIP
 ## Useful references
---------
 WIP
 ## Feature Request
---------
 WIP
