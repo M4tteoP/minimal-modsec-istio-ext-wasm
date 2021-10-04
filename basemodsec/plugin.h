@@ -70,6 +70,6 @@ class PluginContext : public Context {
   inline PluginRootContext* rootContext() {
     return dynamic_cast<PluginRootContext*>(this->root());
   }
-  int initTransaction(modsecurity::Transaction * modsecTransaction);
+  int initTransaction();  // no need to pass modsecurity::Transaction * modsecTransaction, it is inside the class
 };
 

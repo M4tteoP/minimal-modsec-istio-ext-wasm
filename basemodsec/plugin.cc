@@ -53,7 +53,6 @@ bool extractBoolFromJSON(const json& configuration, std::string key, bool* bool_
       return false;
     }
     temp_value = parse_result.first.value();
-    // modSecConfig.detect_sqli = (temp_value == YES);  mi piace ma poco restrittivo
     if(temp_value == YES){
       *bool_ptr = true;
     }else if(temp_value == NO){
@@ -299,7 +298,7 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
   // Beginning of the transaction, generation of the object inside the context of this request.
   modsecTransaction = new modsecurity::Transaction(rootContext()->modsec, rootContext()->rules, NULL);
 
-  if(initTransaction(modsecTransaction)!=0){
+  if(initTransaction()!=0){
     return alertActionHeader(ret);
   }
 
@@ -380,7 +379,7 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
 //#######################################
 //#         initTransaction             #
 //#######################################
-int PluginContext::initTransaction(modsecurity::Transaction * modsecTransaction){
+int PluginContext::initTransaction(){
   int ret=0;
   std::string clientIP;
   uint64_t clientPort;
@@ -497,6 +496,7 @@ FilterDataStatus PluginContext::onRequestBody(unsigned long body_buffer_length, 
 //#########################################
 FilterHeadersStatus PluginContext::onResponseHeaders(uint32_t, bool) {
   int ret=0;
+  int response_status=200;
 
   // Collecting all the headers
   WasmDataPtr result = getResponseHeaderPairs();
@@ -524,11 +524,14 @@ FilterHeadersStatus PluginContext::onResponseHeaders(uint32_t, bool) {
   // adding headers to the modsec transaction
   for (auto& pair : pairs) {
     modsecTransaction -> addResponseHeader(std::string(pair.first),std::string(pair.second));
-    // TODO rework this to retrive the response code (int), needed for processResponseHeaders
-    // if(pair.first == "content-length"){
-    //  body_size = std::stoi(std::string(pair.second));
-    // }
+    if(pair.first == ":status"){
+     response_status = std::stoi(std::string(pair.second));
+    }
   }
+
+  #ifdef DEBUG
+  LOG_WARN(absl::StrCat("[onResponseHeaders][DEBUG] response status: ", std::to_string(response_status)));
+  #endif
 
   ret=process_intervention(modsecTransaction);
   printInterventionRet("onResponseHeaders","addResponseHeader",ret);
@@ -539,10 +542,9 @@ FilterHeadersStatus PluginContext::onResponseHeaders(uint32_t, bool) {
   LOG_WARN("[onResponseHeaders] Request Headers added\n");
 
   // process response Headers
-  // TODO response code
   // TODO: HTTP version
   // https://github.com/SpiderLabs/ModSecurity/blob/bf881a4eda343d37629e39ede5e28b70dc4067c0/src/transaction.cc#L1048
-  modsecTransaction->processResponseHeaders("200","HTTP 1.1");
+  modsecTransaction->processResponseHeaders(response_status,"HTTP 1.1");
   ret=process_intervention(modsecTransaction);
   printInterventionRet("onResponseHeaders","processResponseHeaders",ret);
   if(ret!=0){
