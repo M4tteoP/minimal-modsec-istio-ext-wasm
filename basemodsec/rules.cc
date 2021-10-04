@@ -18,11 +18,13 @@
 /*
 SecRuleEngine DetectionOnly
 SecRequestBodyAccess On
+SecResponseBodyAccess On
 SecRuleEngine On
 SecDebugLogLevel 9
 SecRequestBodyLimit 13107200
 SecRequestBodyNoFilesLimit 131072
 SecRequestBodyLimitAction Reject
+SecResponseBodyLimitAction ProcessPartial
 SecDefaultAction "phase:1,log,auditlog,deny,status:403"
 SecDefaultAction "phase:2,log,auditlog,deny,status:403"
 SecCollectionTimeout 600
@@ -33,6 +35,8 @@ std::string defaultConfigRules = "SecRuleEngine Detect"
    "ionOnly\r\n"
    "SecRequestBodyAccess"
    " On\r\n"
+   "SecResponseBodyAcces"
+   "s On\r\n"
    "SecRuleEngine On\r\n"
    "SecDebugLogLevel 9\r"
    "\n"
@@ -42,6 +46,9 @@ std::string defaultConfigRules = "SecRuleEngine Detect"
    "sLimit 131072\r\n"
    "SecRequestBodyLimitA"
    "ction Reject\r\n"
+   "SecResponseBodyLimit"
+   "Action ProcessPartia"
+   "l\r\n"
    "SecDefaultAction \"p"
    "hase:1,log,auditlog,"
    "deny,status:403\"\r"

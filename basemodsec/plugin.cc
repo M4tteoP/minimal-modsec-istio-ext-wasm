@@ -508,7 +508,7 @@ FilterHeadersStatus PluginContext::onResponseHeaders(uint32_t, bool) {
     LOG_WARN("[onResponseHeaders][!] ERROR: Response Headers received with modsecTransaction = NULL");
     #ifdef DEBUG
     LOG_WARN(std::string("[onResponseHeaders][DEBUG][!] Printing response headers: ") + std::to_string(pairs.size()));
-    for (auto &p : pairs) {
+    for (std::pair<std::string_view,std::string_view> &p : pairs) {
       LOG_WARN(std::string(p.first) + std::string(" -> ") + std::string(p.second));
     }
     #endif
@@ -516,13 +516,13 @@ FilterHeadersStatus PluginContext::onResponseHeaders(uint32_t, bool) {
   }
   #ifdef DEBUG
   LOG_WARN(std::string("[onResponseHeaders][DEBUG] Printing response headers: ") + std::to_string(pairs.size()));
-  for (auto &p : pairs) {
+  for (std::pair<std::string_view,std::string_view> &p : pairs) {
     LOG_WARN(std::string(p.first) + std::string(" -> ") + std::string(p.second));
   }
   #endif
 
   // adding headers to the modsec transaction
-  for (auto& pair : pairs) {
+  for (std::pair<std::string_view,std::string_view>& pair : pairs) {
     modsecTransaction -> addResponseHeader(std::string(pair.first),std::string(pair.second));
     if(pair.first == ":status"){
      response_status = std::stoi(std::string(pair.second));
