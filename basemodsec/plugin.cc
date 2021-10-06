@@ -154,9 +154,10 @@ int process_intervention(modsecurity::Transaction *transaction) {
     // Check: working on removing useless "Log: (no log message was specified)" showed in the log.
     if(intervention.status!=200){
       output += absl::StrCat("Log: ", intervention.log, "intervention.status = ", std::to_string(intervention.status) , "\n");
-      free(intervention.log);
-      intervention.log = NULL;
     }
+
+    free(intervention.log);
+    intervention.log = NULL;
 
     if (intervention.url != NULL) {
       output += absl::StrCat("Intervention, redirect to: ", intervention.url, " with status code: ", std::to_string(intervention.status), "\n");
