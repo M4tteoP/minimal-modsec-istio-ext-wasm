@@ -115,65 +115,65 @@ bool extractJSON(const json& configuration, PluginRootContext::ModSecConfigStruc
 //##     Reaction function    ##
 //##############################
 
-static void logCb(void *data, const void *ruleMessagev) {
-    if (ruleMessagev == NULL) {
-          LOG_WARN("[logCb] call with ruleMessagev = NULL\n");
-        return;
-    }
+// static void logCb(void *data, const void *ruleMessagev) {
+//     if (ruleMessagev == NULL) {
+//           LOG_WARN("[logCb] call with ruleMessagev = NULL\n");
+//         return;
+//     }
 
-    const modsecurity::RuleMessage *ruleMessage = reinterpret_cast<const modsecurity::RuleMessage *>(ruleMessagev);
-    std::string output{"[logCb]"};
-    output += absl::StrCat("Rule Id: ", std::to_string(ruleMessage->m_ruleId), " phase: ", std::to_string(ruleMessage->m_phase), "\n");
-    if (ruleMessage->m_isDisruptive) {
-        output += absl::StrCat(" * Match of disruptive action: ", modsecurity::RuleMessage::log(ruleMessage), "\n ** %d is meant to be informed by the webserver.\n");
-    } else {
-        output += absl::StrCat(" * Match of no disruptive action: ", modsecurity::RuleMessage::log(ruleMessage), "\n");
-    }
-      logWarn(output);
-}
+//     const modsecurity::RuleMessage *ruleMessage = reinterpret_cast<const modsecurity::RuleMessage *>(ruleMessagev);
+//     std::string output{"[logCb]"};
+//     output += absl::StrCat("Rule Id: ", std::to_string(ruleMessage->m_ruleId), " phase: ", std::to_string(ruleMessage->m_phase), "\n");
+//     if (ruleMessage->m_isDisruptive) {
+//         output += absl::StrCat(" * Match of disruptive action: ", modsecurity::RuleMessage::log(ruleMessage), "\n ** %d is meant to be informed by the webserver.\n");
+//     } else {
+//         output += absl::StrCat(" * Match of no disruptive action: ", modsecurity::RuleMessage::log(ruleMessage), "\n");
+//     }
+//       logWarn(output);
+// }
 
-int process_intervention(modsecurity::Transaction *transaction) {
-    modsecurity::ModSecurityIntervention intervention;
-    intervention.status = 200;
-    intervention.url = NULL;
-    intervention.log = NULL;
-    intervention.disruptive = 1;  // TODO check param https://github.com/SpiderLabs/ModSecurity/blob/v3/master/src/transaction.cc#L1433
-    std::string output{"[process_intervention] "};
+// int process_intervention(modsecurity::Transaction *transaction) {
+//     modsecurity::ModSecurityIntervention intervention;
+//     intervention.status = 200;
+//     intervention.url = NULL;
+//     intervention.log = NULL;
+//     intervention.disruptive = 1;  // TODO check param https://github.com/SpiderLabs/ModSecurity/blob/v3/master/src/transaction.cc#L1433
+//     std::string output{"[process_intervention] "};
 
-    if (msc_intervention(transaction, &intervention) == 0) {
-        #ifdef DEBUG
-        LOG_WARN("[process_intervention][msc_intervention] returning here");
-        #endif
-        return 0;
-    }
+//     if (msc_intervention(transaction, &intervention) == 0) {
+//         #ifdef DEBUG
+//         LOG_WARN("[process_intervention][msc_intervention] returning here");
+//         #endif
+//         return 0;
+//     }
 
-    if (intervention.log == NULL) {
-        intervention.log = strdup("(no log message was specified)");
-    }
+//     if (intervention.log == NULL) {
+//         intervention.log = strdup("(no log message was specified)");
+//     }
 
-    // Check: working on removing useless "Log: (no log message was specified)" showed in the log.
-    if(intervention.status!=200){
-      output += absl::StrCat("Log: ", intervention.log, "intervention.status = ", std::to_string(intervention.status) , "\n");
-      free(intervention.log);
-      intervention.log = NULL;
-    }
+//     // Check: working on removing useless "Log: (no log message was specified)" showed in the log.
+//     if(intervention.status!=200){
+//       output += absl::StrCat("Log: ", intervention.log, "intervention.status = ", std::to_string(intervention.status) , "\n");
+//       free(intervention.log);
+//       intervention.log = NULL;
+//     }
 
-    if (intervention.url != NULL) {
-      output += absl::StrCat("Intervention, redirect to: ", intervention.url, " with status code: ", std::to_string(intervention.status), "\n");
-      free(intervention.url);
-      intervention.url = NULL;
-      LOG_WARN(output);
-      return intervention.status;
-    }
+//     if (intervention.url != NULL) {
+//       output += absl::StrCat("Intervention, redirect to: ", intervention.url, " with status code: ", std::to_string(intervention.status), "\n");
+//       free(intervention.url);
+//       intervention.url = NULL;
+//       LOG_WARN(output);
+//       return intervention.status;
+//     }
 
-    if (intervention.status != 200) {
-      output += absl::StrCat("Intervention, returning code: ", std::to_string(intervention.status), "\n");
-      LOG_WARN(output);
-      return intervention.status;
-    }
-    LOG_WARN(output);
-    return 0;
-}
+//     if (intervention.status != 200) {
+//       output += absl::StrCat("Intervention, returning code: ", std::to_string(intervention.status), "\n");
+//       LOG_WARN(output);
+//       return intervention.status;
+//     }
+//     LOG_WARN(output);
+//     return 0;
+// }
 
 //#######################################################
 //##              Root Callbacks Functions             ##
@@ -189,15 +189,15 @@ bool PluginRootContext::onConfigure(size_t size) {
   // now modSecConfig struct is populated with the configuration requested
 
   // ModSecurity setup
-  modsec = new modsecurity::ModSecurity();
+  //modsec = new modsecurity::ModSecurity();
   // TODO update this value
-  modsec->setConnectorInformation("ModSecurity-test v0.0.1-alpha (WASM ModSecurity test)");
-  modsec->setServerLogCb(logCb, modsecurity::RuleMessageLogProperty | modsecurity::IncludeFullHighlightLogProperty);
+  //modsec->setConnectorInformation("ModSecurity-test v0.0.1-alpha (WASM ModSecurity test)");
+  //modsec->setServerLogCb(logCb, modsecurity::RuleMessageLogProperty | modsecurity::IncludeFullHighlightLogProperty);
 
   LOG_WARN("[onConfigure] ModSecurity initial setup done");
 
   // Concatenation of the requested rules and loading
-  rules = new modsecurity::RulesSet();
+  //rules = new modsecurity::RulesSet();
 
   std::string rulesConcat{""};
 
@@ -234,10 +234,10 @@ bool PluginRootContext::onConfigure(size_t size) {
   #endif
 
   // Loading rules
-  if (rules->load(rulesConcat.c_str()) < 0){
-      LOG_WARN(absl::StrCat("[onConfigure] FATAL ERROR: Problems loading the rules\n", rules->m_parserError.str(), "\n"));
-      return false;
-  }
+  // if (rules->load(rulesConcat.c_str()) < 0){
+  //     LOG_WARN(absl::StrCat("[onConfigure] FATAL ERROR: Problems loading the rules\n", rules->m_parserError.str(), "\n"));
+  //     return false;
+  // }
 
   LOG_WARN("[onConfigure] Modsecurity Rules Loaded");
 
@@ -296,7 +296,7 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
   int body_size = 0;
 
   // Beginning of the transaction, generation of the object inside the context of this request.
-  modsecTransaction = new modsecurity::Transaction(rootContext()->modsec, rootContext()->rules, NULL);
+  //modsecTransaction = new modsecurity::Transaction(rootContext()->modsec, rootContext()->rules, NULL);
 
   if(initTransaction()!=0){
     return alertActionHeader(ret);
@@ -316,13 +316,13 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
 
   // adding headers to the transaction
   for (auto& pair : pairs) {
-    modsecTransaction -> addRequestHeader(std::string(pair.first),std::string(pair.second));
+    //modsecTransaction -> addRequestHeader(std::string(pair.first),std::string(pair.second));
     // retrieveing size of the body
     if(pair.first == "content-length"){
       body_size = std::stoi(std::string(pair.second));
     }
   }
-  ret=process_intervention(modsecTransaction);
+  //ret=process_intervention(modsecTransaction);
   printInterventionRet("onRequestHeaders","addRequestHeader",ret);
   if(ret!=0){
     return alertActionHeader(ret);
@@ -331,12 +331,12 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
   LOG_WARN("[onRequestHeaders] Request Headers added\n");
 
   // process Headers
-  if(modsecTransaction -> processRequestHeaders()){
-    LOG_WARN("[onRequestHeaders][processRequestHeaders] correctly executed");
-  }else{
-    LOG_WARN("[onRequestHeaders][processRequestHeaders][!] Errors on processing request headers");
-  }
-  ret = process_intervention(modsecTransaction);
+  // if(modsecTransaction -> processRequestHeaders()){
+  //   LOG_WARN("[onRequestHeaders][processRequestHeaders] correctly executed");
+  // }else{
+  //   LOG_WARN("[onRequestHeaders][processRequestHeaders][!] Errors on processing request headers");
+  // }
+  // ret = process_intervention(modsecTransaction);
   printInterventionRet("onRequestHeaders","processRequestHeaders",ret);
   if(ret != 0){
     return alertActionHeader(ret);
@@ -352,19 +352,19 @@ FilterHeadersStatus PluginContext::onRequestHeaders(uint32_t, bool) {
   // if request has NO body (typically GET requests), we still want to analyze the headers with modSec (typical CRS rules at phase:2)
   if(method == "GET" || body_size == 0){
     // I add an empty body to the process
-    modsecTransaction->appendRequestBody((const unsigned char*)"",1);
-    ret=process_intervention(modsecTransaction);
+    //modsecTransaction->appendRequestBody((const unsigned char*)"",1);
+    //ret=process_intervention(modsecTransaction);
     printInterventionRet("onRequestHeaders","appendRequestBody (empty)",ret);
     if(ret!=0){
       return alertActionHeader(ret);
     }
     // I process it
-    if(modsecTransaction->processRequestBody()){
-      LOG_WARN("[onRequestHeaders][processRequestBody] (empty) correctly executed");
-    }else{
-      LOG_WARN("[onRequestHeaders][processRequestBody][!](empty) Errors on processing the request body");
-    }
-    ret=process_intervention(modsecTransaction);
+    // if(modsecTransaction->processRequestBody()){
+    //   LOG_WARN("[onRequestHeaders][processRequestBody] (empty) correctly executed");
+    // }else{
+    //   LOG_WARN("[onRequestHeaders][processRequestBody][!](empty) Errors on processing the request body");
+    // }
+    //ret=process_intervention(modsecTransaction);
     printInterventionRet("onRequestHeaders","processRequestBody (empty)",ret);
     if(ret!=0){
       return alertActionHeader(ret);
@@ -390,7 +390,7 @@ int PluginContext::initTransaction(){
   std::string version;
 
   // starting transaction
-  ret = process_intervention(modsecTransaction);
+  //ret = process_intervention(modsecTransaction);
   printInterventionRet("initTransaction","starting",ret);
   if(ret != 0){
     return ret;
@@ -410,8 +410,8 @@ int PluginContext::initTransaction(){
   LOG_WARN(absl::StrCat("[initTransaction] New connection ", clientIP,":",std::to_string(clientPort)," -> ",serverIP,":",std::to_string(serverPort)));
 
   // processing basic information
-  modsecTransaction -> processConnection(clientIP.c_str(), clientPort, serverIP.c_str(), serverPort);
-  ret = process_intervention(modsecTransaction);
+  //modsecTransaction -> processConnection(clientIP.c_str(), clientPort, serverIP.c_str(), serverPort);
+  //ret = process_intervention(modsecTransaction);
   printInterventionRet("initTransaction","processConnection",ret);
   if(ret != 0){
     return ret;
@@ -427,10 +427,10 @@ int PluginContext::initTransaction(){
 
   LOG_WARN(absl::StrCat("[initTransaction] method: ", method," version: ", version, " path: ", uri));
 
-  modsecTransaction->processURI(uri.c_str(), method.c_str(), version.c_str());
+  //modsecTransaction->processURI(uri.c_str(), method.c_str(), version.c_str());
 
   // process URI
-  ret = process_intervention(modsecTransaction);
+  //ret = process_intervention(modsecTransaction);
   printInterventionRet("initTransaction","processURI",ret);
   if(ret != 0){
     return ret;
@@ -450,24 +450,24 @@ FilterDataStatus PluginContext::onRequestBody(unsigned long body_buffer_length, 
   WasmDataPtr body = getBufferBytes(WasmBufferType::HttpRequestBody, 0, body_buffer_length);
   std::string bodyString = std::string(body->view());
 
-  if(modsecTransaction == NULL){
+  //if(modsecTransaction == NULL){
     // Should never happen, body arrived without previously handled headers;
     // Log and drop the request
-    LOG_WARN("[onRequestBody][!] ERROR: Body received with modsecTransaction = NULL");
-    #ifdef DEBUG
-    LOG_WARN(absl::StrCat("[onRequestBody][DEBUG][!] bodyString = \n", bodyString));
-    #endif
-    return alertActionBody(-1);
-  }
+    // LOG_WARN("[onRequestBody][!] ERROR: Body received with modsecTransaction = NULL");
+    // #ifdef DEBUG
+    // LOG_WARN(absl::StrCat("[onRequestBody][DEBUG][!] bodyString = \n", bodyString));
+    // #endif
+    // return alertActionBody(-1);
+  //}
 
   #ifdef DEBUG
   LOG_WARN(absl::StrCat("[onRequestBody][DEBUG] bodyString = \n", bodyString));
   #endif
 
   // adding Body to the transaction
-  modsecTransaction->appendRequestBody((const unsigned char*)bodyString.c_str(),bodyString.length());
+  //modsecTransaction->appendRequestBody((const unsigned char*)bodyString.c_str(),bodyString.length());
 
-  ret=process_intervention(modsecTransaction);
+  //ret=process_intervention(modsecTransaction);
   if(ret!=0){
     return alertActionBody(ret);
   }
@@ -475,13 +475,13 @@ FilterDataStatus PluginContext::onRequestBody(unsigned long body_buffer_length, 
   LOG_WARN("[onRequestBody] Request Body added");
 
   // Process body
-  if(modsecTransaction->processRequestBody()){
-    LOG_WARN("[onRequestBody][processRequestBody] Correctly executed");
-  }else{
-    LOG_WARN("[onRequestBody][processRequestBody][!] Errors on processing the requet body");
-  }
+  // if(modsecTransaction->processRequestBody()){
+  //   LOG_WARN("[onRequestBody][processRequestBody] Correctly executed");
+  // }else{
+  //   LOG_WARN("[onRequestBody][processRequestBody][!] Errors on processing the requet body");
+  // }
 
-  ret=process_intervention(modsecTransaction);
+  //ret=process_intervention(modsecTransaction);
   if(ret!=0){
     return alertActionBody(ret);
   }
@@ -502,18 +502,18 @@ FilterHeadersStatus PluginContext::onResponseHeaders(uint32_t, bool) {
   WasmDataPtr result = getResponseHeaderPairs();
   std::vector<std::pair<std::string_view,std::string_view>> pairs = result->pairs();
 
-  if(modsecTransaction == NULL){
+  //if(modsecTransaction == NULL){
     // Should never happen, the request should have generated the context
     // Log and drop
-    LOG_WARN("[onResponseHeaders][!] ERROR: Response Headers received with modsecTransaction = NULL");
-    #ifdef DEBUG
-    LOG_WARN(std::string("[onResponseHeaders][DEBUG][!] Printing response headers: ") + std::to_string(pairs.size()));
-    for (std::pair<std::string_view,std::string_view> &p : pairs) {
-      LOG_WARN(std::string(p.first) + std::string(" -> ") + std::string(p.second));
-    }
-    #endif
-    return alertActionHeader(-1);
-  }
+    // LOG_WARN("[onResponseHeaders][!] ERROR: Response Headers received with modsecTransaction = NULL");
+    // #ifdef DEBUG
+    // LOG_WARN(std::string("[onResponseHeaders][DEBUG][!] Printing response headers: ") + std::to_string(pairs.size()));
+    // for (std::pair<std::string_view,std::string_view> &p : pairs) {
+    //   LOG_WARN(std::string(p.first) + std::string(" -> ") + std::string(p.second));
+    // }
+    // #endif
+    // return alertActionHeader(-1);
+  //}
   #ifdef DEBUG
   LOG_WARN(std::string("[onResponseHeaders][DEBUG] Printing response headers: ") + std::to_string(pairs.size()));
   for (std::pair<std::string_view,std::string_view> &p : pairs) {
@@ -523,7 +523,7 @@ FilterHeadersStatus PluginContext::onResponseHeaders(uint32_t, bool) {
 
   // adding headers to the modsec transaction
   for (std::pair<std::string_view,std::string_view>& pair : pairs) {
-    modsecTransaction -> addResponseHeader(std::string(pair.first),std::string(pair.second));
+    //modsecTransaction -> addResponseHeader(std::string(pair.first),std::string(pair.second));
     if(pair.first == ":status"){
      response_status = std::stoi(std::string(pair.second));
     }
@@ -533,7 +533,7 @@ FilterHeadersStatus PluginContext::onResponseHeaders(uint32_t, bool) {
   LOG_WARN(absl::StrCat("[onResponseHeaders][DEBUG] response status: ", std::to_string(response_status)));
   #endif
 
-  ret=process_intervention(modsecTransaction);
+  //ret=process_intervention(modsecTransaction);
   printInterventionRet("onResponseHeaders","addResponseHeader",ret);
   if(ret!=0){
     return alertActionHeader(ret);
@@ -544,8 +544,8 @@ FilterHeadersStatus PluginContext::onResponseHeaders(uint32_t, bool) {
   // process response Headers
   // TODO: HTTP version
   // https://github.com/SpiderLabs/ModSecurity/blob/bf881a4eda343d37629e39ede5e28b70dc4067c0/src/transaction.cc#L1048
-  modsecTransaction->processResponseHeaders(response_status,"HTTP 1.1");
-  ret=process_intervention(modsecTransaction);
+  //modsecTransaction->processResponseHeaders(response_status,"HTTP 1.1");
+  //ret=process_intervention(modsecTransaction);
   printInterventionRet("onResponseHeaders","processResponseHeaders",ret);
   if(ret!=0){
     return alertActionHeader(ret);
@@ -564,24 +564,24 @@ FilterDataStatus PluginContext::onResponseBody(unsigned long body_buffer_length,
   WasmDataPtr responseBody = getBufferBytes(WasmBufferType::HttpResponseBody, 0, body_buffer_length);
   std::string responseBodyString = std::string(responseBody->view());
 
-  if(modsecTransaction == NULL){
+  //if(modsecTransaction == NULL){
     // Should never happen, the request should have generated the context
     // Log and drop
-    LOG_WARN("[onResponseBody][!] ERROR: Response Body received with modsecTransaction = NULL");
-    #ifdef DEBUG
-    LOG_WARN(absl::StrCat("[onResponseBody][DEBUG][!] responseBodyString = \n", responseBodyString));
-    #endif
-    return alertActionBody(-1);
-  }
+    // LOG_WARN("[onResponseBody][!] ERROR: Response Body received with modsecTransaction = NULL");
+    // #ifdef DEBUG
+    // LOG_WARN(absl::StrCat("[onResponseBody][DEBUG][!] responseBodyString = \n", responseBodyString));
+    // #endif
+    // return alertActionBody(-1);
+  //}
 
   #ifdef DEBUG
   LOG_WARN(absl::StrCat("[onResponseBody][DEBUG] responseBodyString = \n", responseBodyString));
   #endif
 
   // adding response body to the transaction
-  modsecTransaction->appendResponseBody((const unsigned char*)responseBodyString.c_str(),responseBodyString.length());
+  //modsecTransaction->appendResponseBody((const unsigned char*)responseBodyString.c_str(),responseBodyString.length());
 
-  ret=process_intervention(modsecTransaction);
+  //ret=process_intervention(modsecTransaction);
   if(ret!=0){
     return alertActionBody(ret);
   }
@@ -589,12 +589,12 @@ FilterDataStatus PluginContext::onResponseBody(unsigned long body_buffer_length,
   LOG_WARN("[onResponseBody] Response Body added");
 
   // Processing response body
-  if(modsecTransaction->processResponseBody()){
-    LOG_WARN("[onResponseBody] processResponseBody() correctly executed");
-  }else{
-    LOG_WARN("[onResponseBody][!] Errors on performing processResponseBody()");
-  }
-  ret=process_intervention(modsecTransaction);
+  //if(modsecTransaction->processResponseBody()){
+  //  LOG_WARN("[onResponseBody] processResponseBody() correctly executed");
+  //}else{
+  //  LOG_WARN("[onResponseBody][!] Errors on performing processResponseBody()");
+  //}
+  //ret=process_intervention(modsecTransaction);
   if(ret!=0){
     return alertActionBody(ret);
   }
@@ -608,8 +608,8 @@ FilterDataStatus PluginContext::onResponseBody(unsigned long body_buffer_length,
 //################################
 // Vital callback: at the end of the stream, the modsec object must be deallocated
 void PluginContext::onDelete(){
-  delete modsecTransaction;
-  modsecTransaction = NULL;
+  //delete modsecTransaction;
+  //modsecTransaction = NULL;
   LOG_WARN(std::string("[onDelete][OK] " + std::to_string(id())));
 }
 

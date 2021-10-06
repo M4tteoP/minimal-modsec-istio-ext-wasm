@@ -10,9 +10,9 @@ static const std::string EMPTY_STRING;
 #include "absl/strings/str_split.h"
 #include "extensions/common/wasm/base64.h"
 #include "extensions/common/wasm/json_util.h"
-#include "modsec/include/modsecurity/rule_message.h"
-#include "modsec/include/modsecurity/modsecurity.h"
-#include "modsec/include/modsecurity/rules_set.h"
+// #include "modsec/include/modsecurity/rule_message.h"
+// #include "modsec/include/modsecurity/modsecurity.h"
+// #include "modsec/include/modsecurity/rules_set.h"
 
 // My custom JSON words
 #define JSON_NAME "modsec_config"
@@ -28,8 +28,8 @@ class PluginRootContext : public RootContext {
  public:
   explicit PluginRootContext(uint32_t id, std::string_view root_id) : RootContext(id, root_id) {}
   ~PluginRootContext(){
-    delete rules;
-    delete modsec;
+    // delete rules;
+    // delete modsec;
     logWarn("Cleanup done\n");
   }
   bool onConfigure(size_t) override;
@@ -42,8 +42,8 @@ class PluginRootContext : public RootContext {
     std::vector<std::string> custom_rules;
   };
 
-  modsecurity::ModSecurity *modsec;
-  modsecurity::RulesSet *rules;
+  // modsecurity::ModSecurity *modsec;
+  // modsecurity::RulesSet *rules;
 
  private:
   bool configure(size_t);
@@ -63,7 +63,7 @@ class PluginContext : public Context {
   FilterDataStatus alertActionBody(int response);
   // Modsecurity object, it will survive across callbacks of the SAME stream
   // Deallocation inside onDelete(), at the end of the connection
-  modsecurity::Transaction* modsecTransaction;
+  //modsecurity::Transaction* modsecTransaction;
   
 
  private:
