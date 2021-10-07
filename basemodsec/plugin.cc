@@ -120,16 +120,13 @@ static void logCb(void *data, const void *ruleMessagev) {
           LOG_WARN("[logCb] call with ruleMessagev = NULL\n");
         return;
     }
-
     const modsecurity::RuleMessage *ruleMessage = reinterpret_cast<const modsecurity::RuleMessage *>(ruleMessagev);
-    std::string output{"[logCb]"};
-    output += absl::StrCat("Rule Id: ", std::to_string(ruleMessage->m_ruleId), " phase: ", std::to_string(ruleMessage->m_phase), "\n");
-    if (ruleMessage->m_isDisruptive) {
-        output += absl::StrCat(" * Match of disruptive action: ", modsecurity::RuleMessage::log(ruleMessage), "\n ** %d is meant to be informed by the webserver.\n");
-    } else {
-        output += absl::StrCat(" * Match of no disruptive action: ", modsecurity::RuleMessage::log(ruleMessage), "\n");
+    LOG_WARN(absl::StrCat("[logCb] Rule Id: ", std::to_string(ruleMessage->m_ruleId), " phase: ", std::to_string(ruleMessage->m_phase), "\n"));
+    if (ruleMessage->m_isDisruptive){
+        LOG_WARN(absl::StrCat("[logCb][!] Match of disruptive action: ", modsecurity::RuleMessage::log(ruleMessage), "\n"));
+    }else{
+        LOG_WARN(absl::StrCat("[logCb][!] Match of no disruptive action: ", modsecurity::RuleMessage::log(ruleMessage), "\n"));
     }
-      logWarn(output);
 }
 
 int process_intervention(modsecurity::Transaction *transaction) {
@@ -138,7 +135,6 @@ int process_intervention(modsecurity::Transaction *transaction) {
     intervention.url = NULL;
     intervention.log = NULL;
     intervention.disruptive = 1;  // TODO check param https://github.com/SpiderLabs/ModSecurity/blob/v3/master/src/transaction.cc#L1433
-    std::string output{"[process_intervention] "};
 
     if (msc_intervention(transaction, &intervention) == 0) {
         #ifdef DEBUG
@@ -147,32 +143,29 @@ int process_intervention(modsecurity::Transaction *transaction) {
         return 0;
     }
 
-    if (intervention.log == NULL) {
-        intervention.log = strdup("(no log message was specified)");
-    }
-
     // Check: working on removing useless "Log: (no log message was specified)" showed in the log.
     if(intervention.status!=200){
-      output += absl::StrCat("Log: ", intervention.log, "intervention.status = ", std::to_string(intervention.status) , "\n");
+      if (intervention.log == NULL) {
+        LOG_WARN(absl::StrCat("[process_intervention] Log: (no log message was specified) intervention.status = ", std::to_string(intervention.status), "\n"));
+      }else{
+        LOG_WARN(absl::StrCat("[process_intervention] Log: ", intervention.log, "intervention.status = ", std::to_string(intervention.status), "\n"));
+      }
     }
 
-    free(intervention.log);
+    free(intervention.log); // log allocated inside msc_intervention, must be freed
     intervention.log = NULL;
 
     if (intervention.url != NULL) {
-      output += absl::StrCat("Intervention, redirect to: ", intervention.url, " with status code: ", std::to_string(intervention.status), "\n");
+      LOG_WARN(absl::StrCat("[process_intervention] Intervention, redirect to: ", intervention.url, " with status code: ", std::to_string(intervention.status), "\n"));
       free(intervention.url);
       intervention.url = NULL;
-      LOG_WARN(output);
       return intervention.status;
     }
 
     if (intervention.status != 200) {
-      output += absl::StrCat("Intervention, returning code: ", std::to_string(intervention.status), "\n");
-      LOG_WARN(output);
+      LOG_WARN(absl::StrCat("[process_intervention] Intervention, returning code: ", std::to_string(intervention.status), "\n"));
       return intervention.status;
     }
-    LOG_WARN(output);
     return 0;
 }
 
@@ -264,6 +257,7 @@ bool PluginRootContext::configure(size_t configuration_size) {
   }
 
   // Print the whole config file just for debug purposes
+  // #ifdef DEBUG may be added
   LOG_WARN("[configure] Recap of configuration read by YAML file:");
   LOG_WARN(absl::StrCat("modSecConfig->enable_default: ", boolToString(modSecConfig.enable_default)));
   LOG_WARN(absl::StrCat("modSecConfig->enable_crs: ", boolToString(modSecConfig.enable_crs)));
