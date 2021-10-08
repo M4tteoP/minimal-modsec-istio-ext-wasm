@@ -21,7 +21,7 @@ using ::Wasm::Common::JsonValueAs;
 #include "rules.h"
 
 // uncomment DEBUG definition to compile the wasm with each request/response complete log on sidecar (istio-proxy) log.s
-#define DEBUG 1
+//#define DEBUG 1
 
 // Registration of the extension implementation.
 static RegisterContextFactory register_Example(CONTEXT_FACTORY(PluginContext), ROOT_FACTORY(PluginRootContext));
@@ -185,7 +185,7 @@ bool PluginRootContext::onConfigure(size_t size) {
   // ModSecurity setup
   modsec = new modsecurity::ModSecurity();
   // TODO update this value
-  modsec->setConnectorInformation("ModSecurity-test v0.0.1-alpha (WASM ModSecurity test)");
+  modsec->setConnectorInformation("WAF (ModSecurity) WASM test");
   modsec->setServerLogCb(logCb, modsecurity::RuleMessageLogProperty | modsecurity::IncludeFullHighlightLogProperty);
 
   LOG_WARN("[onConfigure] ModSecurity initial setup done");

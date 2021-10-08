@@ -1,10 +1,4 @@
-quale libreria mancante
-RESPONSE_BODY  <--- sistemato
-leggere file .data (impatto su 10ina di regole)
-
-
 Rules error. File: <<reference missing or not informed>>. Line: 2291. Column: 22. This version of ModSecurity was not compiled with GeoIP or MaxMind support.
-
 
 SecRule TX:HIGH_RISK_COUNTRY_CODES "!@rx ^$" \
     "id:910100,\
