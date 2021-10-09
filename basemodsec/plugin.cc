@@ -20,7 +20,7 @@ using ::Wasm::Common::JsonValueAs;
 // inclusion of hardcoded rules
 #include "rules.h"
 
-// uncomment DEBUG definition to compile the wasm with each request/response complete log on sidecar (istio-proxy) log.s
+// uncomment DEBUG definition to compile the wasm with each request/response complete log on sidecar (istio-proxy) logs.
 //#define DEBUG 1
 
 // Registration of the extension implementation.
@@ -102,8 +102,7 @@ bool extractJSON(const json& configuration, PluginRootContext::ModSecConfigStruc
             modSecConfig->custom_rules.push_back(rule_string.first.value());
             return true;
           })) {
-    LOG_WARN(absl::StrCat("failed to parse configuration for ",CUSTOM_KEY,". No custom rules will be applied"));
-    return false;
+    LOG_WARN(absl::StrCat("failed to parse configuration for ", CUSTOM_KEY, ". No custom rules will be applied"));
   }
   if (modSecConfig->custom_rules.size() <= 0) {
     LOG_WARN("No custom rules loaded");
